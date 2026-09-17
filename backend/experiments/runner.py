@@ -1,7 +1,21 @@
 import time
 import uuid
-from typing import Dict, Callable, List
+from typing import Dict, Callable, List, Optional
 from ..models.schemas import ExperimentPlan, ExperimentResult, ExperimentStatus, Metric, MetricDirection
+
+# --- Metric Direction Registry ---
+# Centralized mapping of metric names to their optimization directions.
+# This ensures consistency across runner, evaluator, and objective definitions.
+METRIC_DIRECTIONS: Dict[str, MetricDirection] = {
+    "accuracy": MetricDirection.MAXIMIZE,
+    "throughput": MetricDirection.MAXIMIZE,
+    "latency_ms": MetricDirection.MINIMIZE,
+    "gpu_memory_mb": MetricDirection.MINIMIZE,
+}
+
+def get_metric_direction(name: str) -> MetricDirection:
+    """Get the optimization direction for a metric name. Defaults to MAXIMIZE for unknown metrics."""
+    return METRIC_DIRECTIONS.get(name, MetricDirection.MAXIMIZE)
 
 # --- Mock Experiment Implementations ---
 
@@ -44,7 +58,15 @@ EXPERIMENT_REGISTRY: Dict[str, Callable[[Dict], Dict[str, float]]] = {
 # --- Runner ---
 
 class ExperimentRunner:
-    def run(self, plan: ExperimentPlan) -> ExperimentResult:
+    def run(self, plan: ExperimentPlan, metric_definitions: Optional[List] = None) -> ExperimentResult:
+        """
+        Run an experiment plan.
+        
+        Args:
+            plan: The experiment plan to execute.
+            metric_definitions: Optional list of MetricDefinition from the ResearchObjective
+                to use for correct metric directions. If not provided, uses the global registry.
+        """
         start_time = time.time()
         
         # Check if experiment is registered
@@ -63,10 +85,20 @@ class ExperimentRunner:
             experiment_func = EXPERIMENT_REGISTRY[plan.title]
             raw_metrics = experiment_func(plan.parameters)
             
-            # Convert to Metric objects
-            # Note: In a real scenario, we'd map these to the objective's metric definitions
+            # Build direction lookup from metric_definitions if provided, else use global registry
+            direction_map = {}
+            if metric_definitions:
+                for md in metric_definitions:
+                    direction_map[md.name] = md.direction
+            
+            # Convert to Metric objects with correct directions
             metrics = [
-                Metric(name=k, value=v, unit="unit", direction=MetricDirection.MAXIMIZE) 
+                Metric(
+                    name=k, 
+                    value=v, 
+                    unit="unit", 
+                    direction=direction_map.get(k, get_metric_direction(k))
+                ) 
                 for k, v in raw_metrics.items()
             ]
             

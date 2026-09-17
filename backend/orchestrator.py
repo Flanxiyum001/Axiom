@@ -42,7 +42,7 @@ class Orchestrator:
             )
             
             # 2. Run
-            result = self.runner.run(plan)
+            result = self.runner.run(plan, metric_definitions=self.objective.metrics)
             self.store.save_result(result)
             
             # 3. Evaluate
