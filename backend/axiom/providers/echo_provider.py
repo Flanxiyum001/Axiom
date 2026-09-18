@@ -105,17 +105,49 @@ class EchoReasoningProvider(ReasoningProvider):
             f'METRIC = "{metric}"\n'
             'MODE = os.environ.get("__AXIOM_LEVER_MODE__", os.environ.get("AXIOM_LEVER_MODE", "baseline"))\n'
             "\n"
-            "BASE_TICKS = 400000\n"
-            "CANDIDATE_TICKS = 240000\n"
-            'ticks = CANDIDATE_TICKS if MODE == "candidate" else BASE_TICKS\n'
-            "\n"
-            "samples = []\n"
-            "for i in range(3):\n"
-            "    start = time.perf_counter()\n"
+            "def work_batch_size(ticks):\n"
             "    acc = 0\n"
             "    x = 1\n"
             "    for _ in range(ticks):\n"
             "        acc = (acc * 31 + x) % 1000003\n"
+            "    return acc\n"
+            "\n"
+            "def work_threads(ticks):\n"
+            "    acc = 0\n"
+            "    chunk = ticks // 4\n"
+            "    for c in range(4):\n"
+            "        s = 0\n"
+            "        for _ in range(chunk):\n"
+            "            s = (s * 31 + c + 1) % 1000003\n"
+            "        acc = (acc + s) % 1000003\n"
+            "    return acc\n"
+            "\n"
+            "def work_precision(ticks):\n"
+            "    acc = 0.0\n"
+            "    for _ in range(ticks):\n"
+            "        acc += 0.5 * 1.000001\n"
+            "        if acc > 1e12:\n"
+            "            acc *= 1e-12\n"
+            "    return acc\n"
+            "\n"
+            "WORK = {\n"
+            '    "batch_size": work_batch_size,\n'
+            '    "threads": work_threads,\n'
+            '    "precision": work_precision,\n'
+            "}\n"
+            "TICKS = {\n"
+            '    "batch_size": (400000, 200000),\n'
+            '    "threads": (400000, 240000),\n'
+            '    "precision": (800000, 400000),\n'
+            "}\n"
+            "base_ticks, cand_ticks = TICKS.get(LEVER, (400000, 400000))\n"
+            'ticks = cand_ticks if MODE == "candidate" else base_ticks\n'
+            "work = WORK.get(LEVER, work_batch_size)\n"
+            "\n"
+            "samples = []\n"
+            "for i in range(3):\n"
+            "    start = time.perf_counter()\n"
+            "    work(ticks)\n"
             "    elapsed_ms = (time.perf_counter() - start) * 1000.0\n"
             "    samples.append(elapsed_ms)\n"
             '    print(f"iter {i}: {elapsed_ms:.3f} ms", flush=True)\n'

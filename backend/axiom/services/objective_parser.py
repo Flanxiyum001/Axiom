@@ -9,8 +9,8 @@ class ObjectiveParseError(ValueError):
     pass
 
 
-_MINIMIZE_HINTS = ("reduc", "decreas", "lower", "minimiz", "cut", "faster", "less")
-_MAXIMIZE_HINTS = ("increas", "improv", "boost", "maximiz", "higher", "more")
+_DECREASE_HINTS = ("reduc", "decreas", "lower", "minimiz", "cut", "faster", "less", "shrink")
+_INCREASE_HINTS = ("increas", "maximiz", "higher", "more", "boost", "grow", "worsen")
 
 
 def parse_objective(description: str) -> ResearchObjective:
@@ -26,14 +26,10 @@ def parse_objective(description: str) -> ResearchObjective:
         metric = "accuracy"
     else:
         metric = "latency_ms"
-    if any(h in lowered for h in _MINIMIZE_HINTS):
-        direction = Direction.MINIMIZE
-    elif any(h in lowered for h in _MAXIMIZE_HINTS):
-        direction = Direction.MAXIMIZE
-    elif metric == "throughput":
-        direction = Direction.MAXIMIZE
+    if metric == "latency_ms":
+        direction = Direction.MAXIMIZE if any(h in lowered for h in _INCREASE_HINTS) else Direction.MINIMIZE
     else:
-        direction = Direction.MINIMIZE
+        direction = Direction.MINIMIZE if any(h in lowered for h in _DECREASE_HINTS) else Direction.MAXIMIZE
     match = re.search(r"(\d+(?:\.\d+)?)\s*%", text)
     target = float(match.group(1)) if match else 20.0
     return ResearchObjective(

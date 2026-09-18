@@ -102,8 +102,9 @@ class ResearchLoopService:
                 environment={**spec_candidate.environment, "__AXIOM_LEVER_MODE__": "baseline"},
             )
             self.services.repository.save_spec(spec_baseline)
-            baseline_run = self.services.executor.execute(spec_baseline, plan.timeout_seconds)
-            candidate_run = self.services.executor.execute(spec_candidate, plan.timeout_seconds)
+            timeout = min(plan.timeout_seconds, self.config.baseline_timeout_seconds)
+            baseline_run = self.services.executor.execute(spec_baseline, timeout)
+            candidate_run = self.services.executor.execute(spec_candidate, timeout)
             self.services.repository.save_run(baseline_run)
             self.services.repository.save_run(candidate_run)
             run_ids = [baseline_run.id, candidate_run.id]

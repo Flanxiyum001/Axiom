@@ -28,6 +28,24 @@ def test_parse_throughput_objective():
     assert objective.target == 15.0
 
 
+def test_improve_latency_minimizes():
+    objective = parse_objective("Improve latency by 20%")
+    assert objective.metric == "latency_ms"
+    assert objective.direction == Direction.MINIMIZE
+
+
+def test_improve_throughput_and_accuracy_maximize():
+    throughput = parse_objective("Improve throughput by 10%")
+    assert throughput.direction == Direction.MAXIMIZE
+    accuracy = parse_objective("Improve accuracy by 5%")
+    assert accuracy.direction == Direction.MAXIMIZE
+
+
+def test_explicit_direction_overrides_metric_default():
+    assert parse_objective("Increase latency by 10%").direction == Direction.MAXIMIZE
+    assert parse_objective("Reduce throughput by 10%").direction == Direction.MINIMIZE
+
+
 def test_parse_rejects_short_description():
     with pytest.raises(ObjectiveParseError):
         parse_objective("ab")
@@ -144,3 +162,98 @@ def test_loop_failed_runs_continue():
             assert len(services.repository.history_for_objective(objective.id)) == 2
         finally:
             EchoReasoningProvider._code = original
+
+
+def _run_benchmark(lever, mode):
+    import json
+    import os
+    import subprocess
+    import sys
+    code = EchoReasoningProvider.synthetic_benchmark_code(metric="latency_ms", lever=lever)
+    with tempfile.TemporaryDirectory() as tmp:
+        entrypoint = os.path.join(tmp, "bench.py")
+        with open(entrypoint, "w") as handle:
+            handle.write(code)
+        env = {"PATH": os.environ.get("PATH", "/usr/bin:/bin"), "__AXIOM_LEVER_MODE__": mode}
+        completed = subprocess.run([sys.executable, entrypoint], capture_output=True, text=True, timeout=60, env=env)
+        assert completed.returncode == 0, completed.stderr[-500:]
+        payload = json.loads(completed.stdout.strip().splitlines()[-1])
+        values = [entry["value"] for entry in payload["metrics"]]
+        assert len(values) == 3
+        return sum(values) / len(values)
+
+
+def test_levers_behave_differently():
+    codes = {}
+    improvements = {}
+    for lever in ("batch_size", "threads", "precision"):
+        code = EchoReasoningProvider.synthetic_benchmark_code(metric="latency_ms", lever=lever)
+        codes[lever] = code
+        baseline = _run_benchmark(lever, "baseline")
+        candidate = _run_benchmark(lever, "candidate")
+        assert candidate < baseline, lever
+        improvements[lever] = (baseline - candidate) / baseline * 100.0
+    assert len(set(codes.values())) == 3
+    assert '"batch_size": (400000, 200000)' in codes["batch_size"]
+    assert '"threads": (400000, 240000)' in codes["threads"]
+    assert '"precision": (800000, 400000)' in codes["precision"]
+    assert all(value > 20.0 for value in improvements.values())
+
+
+def test_unknown_lever_cannot_fake_win():
+    baseline = _run_benchmark("made_up_lever", "baseline")
+    candidate = _run_benchmark("made_up_lever", "candidate")
+    assert abs(baseline - candidate) / baseline < 0.30
+
+
+def _services_with_recording_executor(tmp):
+    from axiom.agents.analyst import AnalystAgent
+    from axiom.agents.planner import PlannerAgent
+    from axiom.agents.researcher import ResearcherAgent
+    from axiom.domain.interfaces import ExperimentExecutor
+    from axiom.domain.models import ExperimentRun, RunStatus
+    from axiom.execution.artifacts import ArtifactStore
+    from axiom.execution.evaluator import DeterministicEvaluator
+    timeouts = []
+
+    class RecordingExecutor(ExperimentExecutor):
+        def execute(self, spec, timeout_seconds):
+            timeouts.append(timeout_seconds)
+            return ExperimentRun(experiment_id=spec.id, status=RunStatus.FAILED, stderr="nope")
+
+    provider = EchoReasoningProvider()
+    services = LoopServices(
+        provider=provider,
+        researcher=ResearcherAgent(provider),
+        planner=PlannerAgent(provider),
+        analyst=AnalystAgent(provider),
+        executor=RecordingExecutor(),
+        evaluator=DeterministicEvaluator(),
+        repository=SqliteRepository(db_path=":memory:"),
+        artifact_store=ArtifactStore(root=tmp),
+    )
+    return services, timeouts
+
+
+def test_service_timeout_caps_plan_timeout():
+    with tempfile.TemporaryDirectory() as tmp:
+        services, timeouts = _services_with_recording_executor(tmp)
+        objective = parse_objective("Reduce latency by 20%")
+        service = ResearchLoopService(services, ResearchLoopConfig(max_iterations=1, baseline_timeout_seconds=5.0))
+        service.run_objective(objective)
+        assert timeouts == [5.0, 5.0]
+
+
+def test_tighter_plan_timeout_is_honored():
+    from axiom.providers.schemas import PlanOutput
+    with tempfile.TemporaryDirectory() as tmp:
+        services, timeouts = _services_with_recording_executor(tmp)
+        original = EchoReasoningProvider._plan
+        EchoReasoningProvider._plan = lambda self, ctx: PlanOutput(variables=[], metrics=["latency_ms"], repetitions=1, timeout_seconds=7.0)
+        try:
+            objective = parse_objective("Reduce latency by 20%")
+            service = ResearchLoopService(services, ResearchLoopConfig(max_iterations=1, baseline_timeout_seconds=120.0))
+            service.run_objective(objective)
+            assert timeouts == [7.0, 7.0]
+        finally:
+            EchoReasoningProvider._plan = original
