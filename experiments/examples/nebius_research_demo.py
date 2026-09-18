@@ -8,6 +8,9 @@ import os
 import sys
 from pathlib import Path
 
+# Ensure the project root is on the Python path for imports when run as a script
+sys.path.append(str(Path(__file__).resolve().parents[2]))
+
 from backend.orchestrator import Orchestrator
 from backend.models.schemas import ResearchObjective, MetricDefinition, MetricDirection
 

@@ -187,6 +187,35 @@ class NebiusLLMProvider(LLMProvider):
                 return result
 
             except Exception as e:
+                # Do not retry on validation or permanent client errors
+                from openai import BadRequestError, AuthenticationError, NotFoundError, UnprocessableEntityError, APIError, RateLimitError, APIConnectionError
+
+                # If it's our own ProviderError (validation, parsing), re‑raise immediately
+                if isinstance(e, ProviderError):
+                    raise
+
+                # Permanent client errors (4xx except 429) should not be retried
+                permanent_errors = (BadRequestError, AuthenticationError, NotFoundError, UnprocessableEntityError)
+                if isinstance(e, permanent_errors):
+                    raise ProviderError(str(e)) from e
+
+                # OpenAI APIError may contain a status_code; retry on 5xx or 429
+                if isinstance(e, APIError):
+                    status = getattr(e, "status_code", None)
+                    if status and (500 <= status < 600 or status == 429):
+                        # transient – allow retry below
+                        pass
+                    else:
+                        raise ProviderError(str(e)) from e
+
+                # Rate limit or connection issues are transient
+                if isinstance(e, (RateLimitError, APIConnectionError, TimeoutError, OSError)):
+                    # transient – allow retry below
+                    pass
+                else:
+                    # Any other unexpected exception – treat as transient for now
+                    pass
+
                 last_exception = e
                 logger.warning(
                     f"Nebius API call failed (attempt {attempt + 1}): {str(e)}"

@@ -54,35 +54,37 @@ AXIOM supports two LLM providers:
   - `NEBIUS_MODEL`: Model identifier (default: `meta-llama/Meta-Llama-3.1-70B-Instruct`)
 
 
-## Running with Nemotron
+## Running Modes
 
-### Local (Mock) Mode
+AXIOM supports three distinct execution modes:
+
+### A. Local Mock Mode
 - **Provider**: `mock`
-- **Behavior**: Deterministic, offline, no network calls.
-- **Use‑case**: Unit tests, CI, rapid iteration.
-- **Setup**: No additional environment variables required.
+- **Behavior**: Deterministic, offline, no network calls. Used for unit tests, CI, rapid iteration.
+- **Setup**: No environment variables required.
 
-### Nebius (Real) Mode
+### B. Real Nebius LLM Mode
 - **Provider**: `nebius`
-- **Behavior**: Real LLM inference via Nebius Token Factory (Nemotron).
+- **Behavior**: Real LLM inference via the Nebius Token Factory (Nemotron or other OpenAI‑compatible models). Experiment execution remains deterministic (mock), only the reasoning layer is real.
 - **Prerequisites**:
-  1. Create a Nebius Token Factory account and obtain an API key.
-  2. Copy `.env.example` to `.env` and fill in:
-     - `NEBIUS_API_KEY`
-     - (optional) `NEBIUS_BASE_URL` and `NEBIUS_MODEL` if you need non‑default values.
+  1. Obtain a Nebius Token Factory API key.
+  2. Populate `.env` (or export) with `NEBIUS_API_KEY`, optionally `NEBIUS_BASE_URL` and `NEBIUS_MODEL`.
   3. Set `AXIOM_LLM_PROVIDER=nebius`.
-- **Running the smoke test**:
-  ```
-  python experiments/examples/nebius_smoke_test.py
-  ```
-  The script will verify credentials and make a single small request to generate a `Hypothesis`.
-- **Running the full research demo with real LLM**:
-  ```
-  python experiments/examples/nebius_research_demo.py
-  ```
-  This demo runs the full autonomous loop (researcher → planner → mock experiment execution → analyst) using the real Nebius LLM for reasoning.
+- **Safety**: Scripts check for required env vars and exit gracefully with a clear message if they are missing. No API keys are printed.
 
-> **Note**: The actual experiment execution remains deterministic (mock) – only the LLM reasoning layer is real. GPU resources are not required.
+### C. Future Nebius AI Cloud GPU Experiment Execution
+- **Goal**: Run actual GPU‑accelerated experiments on Nebius AI Cloud.
+- **Status**: Not yet implemented. The current codebase only runs mock experiment code; real GPU execution will be added in a future release.
+
+## Model ID
+
+If a verified Nemotron model is available, update the following placeholder with the exact model identifier:
+
+```
+NEBIUS_MODEL=<verified-model-id>
+```
+
+Until then, the default model identifier is `meta-llama/Meta-Llama-3.1-70B-Instruct` as defined in `backend/config.py`.
 
 ## Development Setup
 

@@ -124,7 +124,13 @@ class Orchestrator:
         return True
 
     def _is_duplicate_experiment(self, plan: ExperimentPlan) -> bool:
-        """Check if this experiment type has already been tried."""
+        """Check if this experiment type has already been tried.
+
+        Returns True if the experiment plan title is already present in the set of
+        tried experiment types, otherwise False.
+        """
+        return plan.title in self._tried_experiment_types
+
     def run_loop(self) -> Dict[str, Any]:
         """Execute the autonomous research loop.
 
