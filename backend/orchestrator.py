@@ -11,10 +11,20 @@ from .experiments.runner import ExperimentRunner, EXPERIMENT_REGISTRY
 from .experiments.evaluator import Evaluator
 from .memory.store import ResearchMemoryStore
 from .llm.mock import MockLLMProvider
+from .llm.base import LLMProvider
 from .agents.researcher import ResearcherAgent
 from .agents.planner import PlannerAgent
 from .agents.analyst import AnalystAgent
 from .llm.base import ProviderError
+from .config import settings
+
+# Conditionally import Nebius provider to avoid hard dependency
+try:
+    from .llm.nebius import NebiusLLMProvider
+    NEBIUS_AVAILABLE = True
+except ImportError:
+    NEBIUS_AVAILABLE = False
+    NebiusLLMProvider = None  # type: ignore
 
 
 class Orchestrator:
@@ -48,8 +58,27 @@ class Orchestrator:
         self.evaluator = Evaluator()
         self.store = ResearchMemoryStore()
 
-        # Initialize LLM provider and agents
-        self.provider = MockLLMProvider()
+        # Initialize LLM provider based on configuration
+        provider_name = settings.axiom_llm_provider.lower()
+        if provider_name == "nebius":
+            if not NEBIUS_AVAILABLE:
+                raise RuntimeError(
+                    "Nebius provider requested but openai package is not installed. "
+                    "Install with: pip install openai"
+                )
+            self.provider = NebiusLLMProvider(
+                api_key=settings.nebius_api_key,
+                base_url=settings.nebius_base_url,
+                model=settings.nebius_model,
+                request_timeout=settings.nebius_request_timeout,
+                max_retries=settings.nebius_max_retries,
+            )
+            print(f"[Orchestrator] Using Nebius LLM provider (model={settings.nebius_model})")
+        else:
+            # Default to mock provider (deterministic, no API key needed)
+            self.provider = MockLLMProvider()
+            print("[Orchestrator] Using Mock LLM provider")
+
         self.researcher = ResearcherAgent(self.provider)
         self.planner = PlannerAgent(self.provider)
         self.analyst = AnalystAgent(self.provider)
