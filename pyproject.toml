@@ -1,0 +1,33 @@
+[project]
+name = "axiom"
+version = "0.1.0"
+description = "Autonomous AI research platform (mock‑first architecture)."
+readme = "README.md"
+requires-python = ">=3.9"
+license = "MIT"
+authors = [{name = "AXIOM Team", email = "team@example.com"}]
+
+# Runtime dependencies – the canonical backend implementation
+dependencies = [
+    "fastapi>=0.115.0",
+    "uvicorn[standard]>=0.30.0",
+    "pydantic>=2.8.0",
+    "pydantic-settings>=2.5.0",
+    "openai>=1.45.0",
+]
+
+# Development‑only dependencies (tests, linting, etc.)
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.3.0",
+    "pytest-cov>=5.0.0",
+    "black>=24.8.0",
+    "ruff>=0.6.0",
+]
+
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+[tool.setuptools]
+packages = ["backend", "experiments", "tests"]
+
