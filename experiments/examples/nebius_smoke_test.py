@@ -16,6 +16,10 @@ from pathlib import Path
 # Add the root directory to sys.path to allow importing backend
 sys.path.append(str(Path(__file__).resolve().parents[2]))
 
+# Load .env from the repository root before checking environment variables
+from dotenv import load_dotenv
+load_dotenv()
+
 from backend.llm.nebius import NebiusLLMProvider
 from backend.models.schemas import Hypothesis
 
