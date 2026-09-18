@@ -179,7 +179,22 @@ class MockLLMProvider(LLMProvider):
                 f"Metric '{m.name}': {m.value} {m.unit}"
             )
 
-        if success:
+        # Determine if the hypothesis is supported based on evaluation, not just experiment completion
+        # Parse evaluation from context if available
+        evaluation_success = False
+        try:
+            evaluation_data = context.get("evaluation", {})
+            # Handle both dict and JSON string formats
+            if isinstance(evaluation_data, str):
+                evaluation_dict = json.loads(evaluation_data)
+            else:
+                evaluation_dict = evaluation_data
+            evaluation_success = evaluation_dict.get("success", False)
+        except (json.JSONDecodeError, AttributeError, TypeError):
+            # Fallback to experiment completion if evaluation parsing fails
+            evaluation_success = success
+        
+        if evaluation_success:
             summary = (
                 f"The experiment '{hypothesis_title}' completed successfully. "
                 f"The deterministic evaluation confirmed the experiment met its criteria."
@@ -198,12 +213,12 @@ class MockLLMProvider(LLMProvider):
             )
         else:
             summary = (
-                f"The experiment '{hypothesis_title}' did not complete successfully. "
-                f"The deterministic evaluation indicates the experiment did not meet its criteria."
+                f"The experiment '{hypothesis_title}' completed successfully. "
+                f"The deterministic evaluation indicates the experiment did not meet its objective."
             )
             interpretation = (
                 "The hypothesis was not supported by the evidence. "
-                "The measured metrics did not show the expected improvement."
+                "While some metrics may show improvement, the defined objective was not achieved."
             )
             limitations = [
                 "Results are based on simulated metrics; real-world performance may vary.",
@@ -211,7 +226,7 @@ class MockLLMProvider(LLMProvider):
             ]
             next_direction = (
                 "Investigate alternative approaches or adjust parameters "
-                "to address the observed limitations."
+                "to better address the research objective."
             )
 
         return Analysis(
