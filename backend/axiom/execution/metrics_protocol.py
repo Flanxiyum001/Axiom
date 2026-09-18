@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import json
 import logging
+import math
 
 from axiom.domain.models import MetricSample
 
@@ -61,10 +62,13 @@ def parse_metrics(stdout: str) -> list[MetricSample]:
                 if not isinstance(entry, dict) or "name" not in entry or "value" not in entry:
                     continue
                 try:
+                    value = float(entry["value"])
+                    if not math.isfinite(value):
+                        raise ValueError(f"non-finite metric value: {entry['value']!r}")
                     samples.append(
                         MetricSample(
                             name=str(entry["name"]),
-                            value=float(entry["value"]),
+                            value=value,
                             unit=entry.get("unit"),
                             iteration=int(entry.get("iteration", 0)),
                         )

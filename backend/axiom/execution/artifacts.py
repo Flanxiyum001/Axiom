@@ -26,6 +26,8 @@ class ArtifactStore:
 
     def save_output(self, run_id: str, name: str, content: bytes) -> Artifact:
         """Persist artifact bytes for a run; returns its descriptor."""
+        if not name or name in (".", "..") or "/" in name or "\\" in name or "\x00" in name:
+            raise ValueError(f"Invalid artifact name: {name!r}")
         target_dir = self.root / run_id
         target_dir.mkdir(parents=True, exist_ok=True)
         target = target_dir / name

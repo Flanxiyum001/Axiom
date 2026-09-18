@@ -12,7 +12,7 @@ import os
 import time
 
 METRIC = "latency_ms"
-MODE = os.environ.get("AXIOM_LEVER_MODE", "baseline")
+MODE = os.environ.get("__AXIOM_LEVER_MODE__", os.environ.get("AXIOM_LEVER_MODE", "baseline"))
 
 BASE_TICKS = 400_000
 if MODE == "candidate":
