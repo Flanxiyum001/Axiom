@@ -62,3 +62,34 @@ class ExperimentResult(BaseModel):
     conclusion: Optional[str] = None
     timestamp: datetime = Field(default_factory=datetime.now)
 
+class ResearchMemoryEntry(BaseModel):
+    id: UUID = Field(default_factory=uuid4)
+    experiment_id: UUID
+    objective_id: UUID
+    hypothesis: Optional[str] = None
+    observation: str
+    conclusion: str
+    suggested_next_steps: str
+    timestamp: datetime = Field(default_factory=datetime.now)
+
+
+class Analysis(BaseModel):
+    """Structured Analyst output: interpretation of experiment results.
+
+    The Analyst does NOT override evaluator results. It interprets the
+    deterministic evaluation evidence and produces a structured analysis
+    with observations, interpretation, limitations, and recommended next
+    direction.
+    """
+    id: UUID = Field(default_factory=uuid4)
+    experiment_id: UUID
+    objective_id: UUID
+    hypothesis_id: Optional[UUID] = None
+    hypothesis_title: Optional[str] = None
+    summary: str
+    observations: List[str]
+    interpretation: str
+    limitations: List[str]
+    recommended_next_direction: str
+    timestamp: datetime = Field(default_factory=datetime.now)
+
