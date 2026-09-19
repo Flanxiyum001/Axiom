@@ -1,5 +1,7 @@
 import time
 
+"""Runner behavior: structured results, metadata, and graceful provider failures."""
+
 from pydantic import BaseModel
 
 from axiom.domain.interfaces import ProviderError, ReasoningProvider
@@ -8,13 +10,18 @@ from axiom.experiments.runner import ExperimentRequest, ExperimentResult, Experi
 
 
 class SampleOutput(BaseModel):
+    """Minimal provider output used to exercise runner genericity."""
+
     answer: str
 
 
 class StubProvider(ReasoningProvider):
+    """Configurable test double recording the request it receives."""
+
     name = "stub"
 
     def __init__(self, output=None, error=None, delay=0.0, model=None):
+        """Configure the canned output, error, delay, and model name."""
         self.output = output
         self.error = error
         self.delay = delay
@@ -22,6 +29,7 @@ class StubProvider(ReasoningProvider):
         self.seen = {}
 
     def generate(self, *, system, prompt, context, output_type):
+        """Record arguments, then return output, raise, or build a default."""
         self.seen = {"system": system, "prompt": prompt, "context": context, "output_type": output_type}
         if self.delay:
             time.sleep(self.delay)
@@ -33,6 +41,7 @@ class StubProvider(ReasoningProvider):
 
 
 def test_success_returns_structured_result():
+    """A good provider call yields a COMPLETED result with metadata."""
     provider = StubProvider(output=SampleOutput(answer="42"))
     runner = ExperimentRunner(provider)
     result = runner.run(
@@ -51,6 +60,7 @@ def test_success_returns_structured_result():
 
 
 def test_request_reaches_provider_unmodified():
+    """System, prompt, context, and output type pass through verbatim."""
     provider = StubProvider()
     ExperimentRunner(provider).run(
         ExperimentRequest(system="s", prompt="p", context={"a": "b"}),
@@ -63,10 +73,12 @@ def test_request_reaches_provider_unmodified():
 
 
 def test_request_context_defaults_empty():
+    """Context is optional and defaults to an empty mapping."""
     assert ExperimentRequest(system="s", prompt="p").context == {}
 
 
 def test_provider_error_becomes_failed_result():
+    """ProviderError yields FAILED carrying the provider message."""
     provider = StubProvider(error=ProviderError("bad key"))
     result = ExperimentRunner(provider).run(
         ExperimentRequest(system="s", prompt="p"),
@@ -81,6 +93,7 @@ def test_provider_error_becomes_failed_result():
 
 
 def test_unexpected_error_does_not_raise():
+    """Non-provider exceptions also yield FAILED instead of propagating."""
     provider = StubProvider(error=RuntimeError("connection reset"))
     result = ExperimentRunner(provider).run(
         ExperimentRequest(system="s", prompt="p"),
@@ -93,6 +106,7 @@ def test_unexpected_error_does_not_raise():
 
 
 def test_latency_measures_provider_time():
+    """Reported latency covers the provider call, not just overhead."""
     provider = StubProvider(delay=0.05)
     result = ExperimentRunner(provider).run(
         ExperimentRequest(system="s", prompt="p"),
@@ -103,6 +117,7 @@ def test_latency_measures_provider_time():
 
 
 def test_model_recorded_when_provider_exposes_it():
+    """A string model attribute on the provider is captured in metadata."""
     provider = StubProvider(model="nemotron-test")
     result = ExperimentRunner(provider).run(
         ExperimentRequest(system="s", prompt="p"),
@@ -112,6 +127,7 @@ def test_model_recorded_when_provider_exposes_it():
 
 
 def test_model_and_tokens_default_none():
+    """Model and usage stay None until a provider reports them."""
     provider = StubProvider()
     result = ExperimentRunner(provider).run(
         ExperimentRequest(system="s", prompt="p"),
@@ -124,6 +140,7 @@ def test_model_and_tokens_default_none():
 
 
 def test_runner_is_generic_over_output_type():
+    """The runner works with any validated output schema, not one benchmark."""
     from axiom.providers.schemas import PlanOutput
 
     provider = StubProvider()
@@ -136,6 +153,7 @@ def test_runner_is_generic_over_output_type():
 
 
 def test_garbage_output_becomes_failed_result():
+    """Output failing schema validation yields FAILED instead of passing through."""
     provider = StubProvider(output={"not": "a model"})
     result = ExperimentRunner(provider).run(
         ExperimentRequest(system="s", prompt="p"),
@@ -147,10 +165,14 @@ def test_garbage_output_becomes_failed_result():
 
 
 def test_none_output_becomes_failed_result():
+    """A provider returning None is a contract violation, reported as FAILED."""
     class NoneProvider(ReasoningProvider):
+        """Test double violating the generate contract by returning None."""
+
         name = "none"
 
         def generate(self, *, system, prompt, context, output_type):
+            """Return None instead of the required validated model."""
             return None
 
     result = ExperimentRunner(NoneProvider()).run(
