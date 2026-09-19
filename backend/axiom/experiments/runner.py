@@ -6,7 +6,7 @@ from typing import Generic
 
 from pydantic import BaseModel, Field
 
-from axiom.domain.interfaces import ReasoningProvider, T
+from axiom.domain.interfaces import ProviderError, ReasoningProvider, T
 from axiom.domain.models import RunStatus, utcnow
 
 

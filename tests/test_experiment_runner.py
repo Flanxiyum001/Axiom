@@ -159,3 +159,5 @@ def test_none_output_becomes_failed_result():
     )
     assert result.status == RunStatus.FAILED
     assert result.output is None
+    assert result.error is not None
+    assert "no output" in result.error
