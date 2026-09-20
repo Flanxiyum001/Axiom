@@ -190,3 +190,49 @@ def test_evaluation_links_experiment_reference():
     evaluation = EvaluationFramework([LatencyEvaluator(100.0)]).evaluate(result)
     assert evaluation.experiment.provider == "stub"
     assert evaluation.experiment.latency_ms == 10.0
+
+
+def test_mutating_evaluator_cannot_corrupt_input_or_peers():
+    """Each evaluator gets an isolated copy; mutations never leak outward."""
+    from axiom.evaluation.models import EvaluatorOutcome as Outcome
+
+    seen = {}
+
+    class Mutator(Evaluator):
+        name = "mutator"
+
+        def evaluate(self, result):
+            result.latency_ms = 0.0
+            result.output.answer = "MUTATED"
+            return Outcome(evaluator=self.name, passed=True)
+
+    class Witness(Evaluator):
+        name = "witness"
+
+        def evaluate(self, result):
+            seen["latency_ms"] = result.latency_ms
+            seen["answer"] = result.output.answer
+            return Outcome(evaluator=self.name, passed=True)
+
+    result = _result(output=TextOutput(answer="original"))
+    evaluation = EvaluationFramework([Mutator(), Witness()]).evaluate(result)
+    assert evaluation.passed is True
+    assert result.latency_ms == 10.0
+    assert result.output.answer == "original"
+    assert seen == {"latency_ms": 10.0, "answer": "original"}
+
+
+def test_nameless_evaluator_never_raises_attribute_error():
+    """Evaluators without a usable name still produce labeled failed outcomes."""
+    class Nameless:
+        @property
+        def name(self):
+            raise RuntimeError("no name")
+
+        def evaluate(self, result):
+            raise RuntimeError("kaput")
+
+    evaluation = EvaluationFramework([Nameless()]).evaluate(_result())
+    assert evaluation.passed is False
+    assert evaluation.outcomes[0].evaluator == "Nameless"
+    assert "kaput" in (evaluation.outcomes[0].error or "")

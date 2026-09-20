@@ -2,10 +2,21 @@
 
 from __future__ import annotations
 
+import copy
+
 from axiom.domain.models import utcnow
 from axiom.evaluation.base import Evaluator
 from axiom.evaluation.models import EvaluationResult, EvaluatorOutcome
 from axiom.experiments.runner import ExperimentResult
+
+
+def _evaluator_name(evaluator: Evaluator) -> str:
+    """Resolve a display name that never raises, even for malformed evaluators."""
+    try:
+        name = evaluator.name
+    except Exception:
+        return type(evaluator).__name__
+    return name if isinstance(name, str) and name else type(evaluator).__name__
 
 
 class EvaluationFramework:
@@ -44,21 +55,30 @@ class EvaluationFramework:
         )
 
     def _guarded(self, evaluator: Evaluator, result: ExperimentResult) -> EvaluatorOutcome:
-        """Run one evaluator, converting crashes and bad returns into failures."""
+        """Run one evaluator on an isolated copy, converting failures into outcomes."""
+        name = _evaluator_name(evaluator)
         try:
-            outcome = evaluator.evaluate(result)
+            isolated = copy.deepcopy(result)
         except Exception as exc:
             return EvaluatorOutcome(
-                evaluator=evaluator.name,
+                evaluator=name,
+                passed=False,
+                error=f"Could not isolate input: {type(exc).__name__}: {exc}",
+            )
+        try:
+            outcome = evaluator.evaluate(isolated)
+        except Exception as exc:
+            return EvaluatorOutcome(
+                evaluator=name,
                 passed=False,
                 error=f"{type(exc).__name__}: {exc}",
             )
         if not isinstance(outcome, EvaluatorOutcome):
             return EvaluatorOutcome(
-                evaluator=evaluator.name,
+                evaluator=name,
                 passed=False,
                 error=f"Evaluator returned {type(outcome).__name__}, expected EvaluatorOutcome",
             )
         if not outcome.evaluator:
-            outcome.evaluator = evaluator.name
+            outcome.evaluator = name
         return outcome
