@@ -40,7 +40,7 @@ def load_file(path: str | Path) -> BenchmarkDataset:
     source = Path(path)
     try:
         text = source.read_text(encoding="utf-8")
-    except OSError as exc:
+    except (OSError, UnicodeError) as exc:
         raise BenchmarkLoadError(f"Cannot read benchmark file {source}: {exc}") from exc
     try:
         return loads(text)

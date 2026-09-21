@@ -4,8 +4,6 @@ from __future__ import annotations
 
 from pydantic import BaseModel, Field, field_validator
 
-from axiom.experiments.runner import ExperimentRequest
-
 
 class CaseEvaluationConfig(BaseModel):
     """Optional per-case evaluator tuning, decoupled from evaluator classes."""
@@ -23,10 +21,6 @@ class BenchmarkCase(BaseModel):
     expected_output: str | None = None
     metadata: dict[str, str] = Field(default_factory=dict)
     evaluation: CaseEvaluationConfig = Field(default_factory=CaseEvaluationConfig)
-
-    def to_request(self, system: str = "") -> ExperimentRequest:
-        """Convert the case into runner input without provider coupling."""
-        return ExperimentRequest(system=system, prompt=self.input, context=dict(self.metadata))
 
 
 class BenchmarkDataset(BaseModel):

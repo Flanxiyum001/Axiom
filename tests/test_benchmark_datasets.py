@@ -5,6 +5,7 @@ import tempfile
 from pathlib import Path
 
 from axiom.benchmarks import registry
+from axiom.benchmarks.adapters import case_to_request
 from axiom.benchmarks.loader import (
     BenchmarkLoadError,
     load_dict,
@@ -135,13 +136,21 @@ def test_bundled_example_loads():
 
 
 def test_case_converts_to_runner_request():
-    """Cases expose runner input with metadata as context, no provider tie-in."""
+    """Adapter maps input and metadata without coupling models to the runner."""
     dataset = load_example()
-    request = dataset.cases[0].to_request(system="Be concise.")
+    request = case_to_request(dataset.cases[0], system="Be concise.")
     assert isinstance(request, ExperimentRequest)
     assert request.prompt == dataset.cases[0].input
     assert request.system == "Be concise."
     assert request.context == dataset.cases[0].metadata
+
+
+def test_models_stay_runner_neutral():
+    """Models expose no runner conversion and import no runner names."""
+    import axiom.benchmarks.models as models
+
+    assert not hasattr(models.BenchmarkCase, "to_request")
+    assert "ExperimentRequest" not in vars(models)
 
 
 def test_registry_stores_and_isolates():
@@ -157,6 +166,31 @@ def test_registry_stores_and_isolates():
         assert registry.get_dataset("test_benchmark").cases[0].input == "What is 2+2?"
     finally:
         registry.clear()
+
+
+def test_registry_snapshots_on_insert():
+    """Edits after register never leak into stored registry state."""
+    registry.clear()
+    try:
+        dataset = load_dict(_valid_payload())
+        registry.register(dataset)
+        dataset.cases[0].input = "MUTATED"
+        dataset.name = "renamed"
+        assert registry.get_dataset("test_benchmark").cases[0].input == "What is 2+2?"
+    finally:
+        registry.clear()
+
+
+def test_load_file_rejects_invalid_utf8():
+    """Undecodable bytes fail as load errors, not raw Unicode exceptions."""
+    with tempfile.TemporaryDirectory() as tmp:
+        path = Path(tmp) / "bad.json"
+        path.write_bytes(b'{"name": "\xff\xfe invalid"}')
+        try:
+            load_file(path)
+        except BenchmarkLoadError:
+            return
+        raise AssertionError("expected BenchmarkLoadError")
 
 
 def test_registry_unknown_name():

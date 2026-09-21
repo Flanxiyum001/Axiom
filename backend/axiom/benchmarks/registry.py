@@ -10,8 +10,8 @@ _DATASETS: dict[str, BenchmarkDataset] = {}
 
 
 def register(dataset: BenchmarkDataset) -> None:
-    """Add or replace the dataset stored under its name."""
-    _DATASETS[dataset.name] = dataset
+    """Snapshot the dataset under its name, isolated from later caller edits."""
+    _DATASETS[dataset.name] = copy.deepcopy(dataset)
 
 
 def get_dataset(name: str) -> BenchmarkDataset:
