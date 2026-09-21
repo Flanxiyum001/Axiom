@@ -12,8 +12,8 @@ BenchmarkDataset → case_to_request() → runner.run() → framework.evaluate()
 
 ## Layout
 
-- `models.py` — `CaseFailure` (case id, stage, error) and `PipelineResult`
-  (benchmark, label, report, records, failures).
+- `models.py` — `CaseFailure` (case id, stage, error, optional experiment)
+  and `PipelineResult` (benchmark, label, report, records, failures).
 - `pipeline.py` — `ExperimentPipeline`: binds an existing runner and
   framework. No provider, benchmark, or evaluator logic lives here.
 
@@ -24,5 +24,10 @@ BenchmarkDataset → case_to_request() → runner.run() → framework.evaluate()
 - `fail_fast=True` re-raises the first unexpected error instead.
 - Failed experiment results still flow through evaluation and aggregation,
   so gaps stay visible in the report.
-- A report exists only when at least one case succeeded.
+- Evaluate-stage failures keep the experiment on the `CaseFailure`, so no
+  measured result is ever discarded.
+- A report exists when at least one case produces a `CaseRecord`, including
+  cases from failed experiment results.
+- Per-case `evaluation` budgets travel as data and are not yet translated
+  into evaluator parameters; that wiring is a follow-up.
 - Non-dataset input raises `TypeError`.

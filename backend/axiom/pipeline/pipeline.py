@@ -6,7 +6,7 @@ from axiom.benchmarks.adapters import case_to_request
 from axiom.benchmarks.models import BenchmarkDataset
 from axiom.domain.interfaces import T
 from axiom.evaluation.framework import EvaluationFramework
-from axiom.experiments.runner import ExperimentRunner
+from axiom.experiments.runner import ExperimentResult, ExperimentRunner
 from axiom.pipeline.models import CaseFailure, PipelineResult
 from axiom.reporting.aggregation import aggregate_benchmark
 from axiom.reporting.models import CaseRecord
@@ -50,7 +50,7 @@ class ExperimentPipeline:
                 evaluation = self.framework.evaluate(experiment)
                 records.append(CaseRecord(case_id=case.id, experiment=experiment, evaluation=evaluation))
             except Exception as exc:
-                self._handle(failures, case.id, "evaluate", exc)
+                self._handle(failures, case.id, "evaluate", exc, experiment)
         report = None
         if records:
             report = aggregate_benchmark(dataset.name, records, label=label)
@@ -62,8 +62,22 @@ class ExperimentPipeline:
             failures=failures,
         )
 
-    def _handle(self, failures: list[CaseFailure], case_id: str, stage: str, exc: Exception) -> None:
+    def _handle(
+        self,
+        failures: list[CaseFailure],
+        case_id: str,
+        stage: str,
+        exc: Exception,
+        experiment: ExperimentResult | None = None,
+    ) -> None:
         """Record a case failure, or re-raise when fail_fast is configured."""
         if self.fail_fast:
-            raise exc
-        failures.append(CaseFailure(case_id=case_id, stage=stage, error=f"{type(exc).__name__}: {exc}"))
+            raise
+        failures.append(
+            CaseFailure(
+                case_id=case_id,
+                stage=stage,
+                error=f"{type(exc).__name__}: {exc}",
+                experiment=experiment,
+            )
+        )

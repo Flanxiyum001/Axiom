@@ -144,6 +144,23 @@ def test_evaluate_stage_failures_recorded():
     assert result.report is None
 
 
+def test_evaluate_stage_preserves_experiment():
+    """Experiments surviving a failed evaluation stay attached to the failure."""
+    runner = ExperimentRunner(StubProvider())
+    framework = EvaluationFramework()
+
+    def broken(result):
+        raise RuntimeError("eval kaput")
+
+    framework.evaluate = broken
+    pipeline = ExperimentPipeline(runner, framework)
+    result = pipeline.run(_dataset(), output_type=TextOutput)
+    assert len(result.failures) == 2
+    for failure in result.failures:
+        assert failure.experiment is not None
+        assert failure.experiment.provider == "stub"
+
+
 def test_invalid_dataset_raises_type_error():
     """Non-dataset input is programmer error and raises instead of running."""
     pipeline = _pipeline()
