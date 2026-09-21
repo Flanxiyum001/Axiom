@@ -1,0 +1,20 @@
+{
+  "name": "example_benchmark",
+  "description": "Example benchmark dataset",
+  "cases": [
+    {
+      "id": "case-001",
+      "input": "What is the capital of France?",
+      "expected_output": "Paris",
+      "metadata": {"category": "geography", "difficulty": "easy"},
+      "evaluation": {"min_response_length": 2}
+    },
+    {
+      "id": "case-002",
+      "input": "Summarize the water cycle in one sentence.",
+      "expected_output": null,
+      "metadata": {"category": "science", "difficulty": "medium"},
+      "evaluation": {"latency_budget_ms": 5000.0, "min_response_length": 20}
+    }
+  ]
+}
