@@ -158,3 +158,51 @@ def test_summary_for_missing_evaluator():
     """Unknown evaluator lookup returns None instead of raising."""
     report = aggregate_benchmark("bench", [_record("c1", 1.0)])
     assert report.summary_for("nope") is None
+
+
+def test_mismatched_experiment_pair_rejected():
+    """Outcomes cannot be attributed to a different stored experiment."""
+    experiment = ExperimentResult(status="completed", latency_ms=100.0, provider="stub")
+    other = ExperimentResult(status="completed", latency_ms=200.0, provider="stub")
+    evaluation = EvaluationResult(
+        experiment=other,
+        outcomes=[EvaluatorOutcome(evaluator="accuracy", passed=True, score=1.0)],
+    )
+    try:
+        CaseRecord(case_id="c1", experiment=experiment, evaluation=evaluation)
+    except ValueError as exc:
+        assert "c1" in str(exc)
+        return
+    raise AssertionError("expected ValueError")
+
+
+def test_duplicate_case_ids_rejected():
+    """Two records sharing a case id fail instead of conflating cases."""
+    try:
+        aggregate_benchmark("bench", [_record("c1", 1.0), _record("c1", 2.0)])
+    except AggregationError as exc:
+        assert "c1" in str(exc)
+        return
+    raise AssertionError("expected AggregationError")
+
+
+def test_compare_different_benchmarks_rejected():
+    """Mean shifts across different benchmarks are meaningless and refused."""
+    baseline = aggregate_benchmark("bench-a", [_record("c1", 1.0)])
+    candidate = aggregate_benchmark("bench-b", [_record("c1", 1.0)])
+    try:
+        compare_reports(baseline, candidate)
+    except AggregationError:
+        return
+    raise AssertionError("expected AggregationError")
+
+
+def test_large_finite_scores_keep_finite_mean():
+    """Extreme but finite scores average without overflowing to infinity."""
+    huge = 1e308
+    report = aggregate_benchmark("bench", [_record("c1", huge), _record("c2", huge)])
+    summary = report.summary_for("accuracy")
+    assert summary is not None
+    assert summary.mean == huge
+    assert summary.min == huge
+    assert summary.max == huge

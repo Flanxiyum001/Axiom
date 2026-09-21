@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 from axiom.domain.models import utcnow
 from axiom.evaluation.models import EvaluationResult
@@ -17,6 +17,13 @@ class CaseRecord(BaseModel):
     case_id: str
     experiment: ExperimentResult
     evaluation: EvaluationResult
+
+    @model_validator(mode="after")
+    def _experiments_match(self) -> CaseRecord:
+        """Reject records attributing outcomes to the wrong experiment."""
+        if self.experiment != self.evaluation.experiment:
+            raise ValueError(f"Case {self.case_id!r} pairs mismatched experiments")
+        return self
 
 
 class EvaluatorSummary(BaseModel):

@@ -30,6 +30,11 @@ def aggregate_benchmark(
         raise AggregationError("Benchmark name must not be blank")
     if not records:
         raise AggregationError("Cannot aggregate zero records")
+    seen: set[str] = set()
+    for record in records:
+        if record.case_id in seen:
+            raise AggregationError(f"Duplicated case id: {record.case_id!r}")
+        seen.add(record.case_id)
     scores: dict[str, list[float]] = defaultdict(list)
     summaries: dict[str, EvaluatorSummary] = {}
     for record in records:
@@ -51,7 +56,7 @@ def aggregate_benchmark(
         values = scores[summary.evaluator]
         summary.scored = len(values)
         if values:
-            summary.mean = sum(values) / len(values)
+            summary.mean = math.fsum(value / len(values) for value in values)
             summary.min = min(values)
             summary.max = max(values)
     return BenchmarkReport(
@@ -66,6 +71,10 @@ def aggregate_benchmark(
 
 def compare_reports(baseline: BenchmarkReport, candidate: BenchmarkReport) -> ComparisonReport:
     """Compare shared evaluators by mean shift from baseline to candidate."""
+    if baseline.benchmark != candidate.benchmark:
+        raise AggregationError(
+            f"Cannot compare {baseline.benchmark!r} with {candidate.benchmark!r}"
+        )
     comparisons: list[MetricComparison] = []
     for candidate_summary in candidate.summaries:
         baseline_summary = baseline.summary_for(candidate_summary.evaluator)
