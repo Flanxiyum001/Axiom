@@ -22,3 +22,5 @@ def test_end_to_end_example_runs():
     assert completed.returncode == 0, completed.stderr[-2000:]
     assert "Benchmark: example_benchmark" in completed.stdout
     assert "Cases: 2" in completed.stdout
+    assert "case-001: experiment=completed" in completed.stdout
+    assert "case-002: experiment=completed" in completed.stdout

@@ -5,8 +5,11 @@ reports through four independent stages: run, evaluate, aggregate, orchestrate.
 Each stage is usable on its own; the pipeline only wires them together.
 
 Package guides with module-level detail live alongside the code:
-`backend/axiom/experiments`, `backend/axiom/evaluation`,
-`backend/axiom/benchmarks`, `backend/axiom/reporting`, `backend/axiom/pipeline`.
+[experiments](../backend/axiom/experiments/README.md),
+[evaluation](../backend/axiom/evaluation/README.md),
+[benchmarks](../backend/axiom/benchmarks/README.md),
+[reporting](../backend/axiom/reporting/README.md),
+[pipeline](../backend/axiom/pipeline/README.md).
 
 ## Architecture
 
@@ -82,7 +85,8 @@ register(dataset)
 ```
 
 See `backend/axiom/benchmarks/datasets/example_benchmark.json` and run the
-worked example below.
+worked example below. Note: per-case `evaluation` budgets travel as data for
+now; the pipeline does not yet translate them into evaluator parameters.
 
 ## How to create a new evaluator
 
@@ -104,8 +108,8 @@ failed outcomes automatically.
 ## How results are represented
 
 - **Experiment results** (`ExperimentResult`): output plus status, latency,
-  provider/model, token usage (present only when the provider reports it),
-  error, and timestamps.
+  provider/model, error, and timestamps. Token usage fields exist but stay
+  unset until a provider reports usage through a future interface extension.
 - **Evaluation results** (`EvaluationResult`): the evaluated experiment plus
   one outcome per evaluator and an overall flag (`False` if anything failed,
   `True` if something passed and nothing failed, else inconclusive).
