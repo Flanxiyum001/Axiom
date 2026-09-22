@@ -25,6 +25,9 @@ The initial MVP focuses on **ML model inference optimization**.
 - **Backend**: Python, FastAPI, Pydantic.
 - **Agent Layer**: Specialized agents (Researcher, Planner, Analyst) for orchestration.
 - **Experiment Layer**: Modular runner, evaluator, and sandbox for safe execution.
+  See [docs/experiment-layer.md](docs/experiment-layer.md) for the architecture
+  guide and [experiments/examples/end_to_end_benchmark.py](experiments/examples/end_to_end_benchmark.py)
+  for a runnable end-to-end demo.
 - **Memory**: Persistent store for experiment history and findings.
 - **Frontend**: Next.js (planned).
 
