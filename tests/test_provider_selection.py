@@ -31,9 +31,17 @@ def test_mock_provider_implements_interface():
     assert provider.name == "mock"
 
 
-def test_nebius_provider_requires_api_key():
+def test_nebius_provider_requires_api_key(monkeypatch):
     """Test that NebiusLLMProvider raises error when API key is missing."""
     from backend.llm.nebius import NebiusLLMProvider
+    from backend.config import settings
+
+    # Ensure no ambient NEBIUS_* env vars interfere
+    for var in ["NEBIUS_API_KEY", "NEBIUS_BASE_URL", "NEBIUS_MODEL", "NEBIUS_REQUEST_TIMEOUT", "NEBIUS_MAX_RETRIES"]:
+        monkeypatch.delenv(var, raising=False)
+
+    # Also patch the settings singleton to ensure it doesn't have the API key
+    monkeypatch.setattr(settings, "nebius_api_key", None)
 
     # Create provider without API key - should raise ProviderError
     with pytest.raises(ProviderError) as exc_info:

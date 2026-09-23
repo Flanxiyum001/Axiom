@@ -50,9 +50,21 @@ class LoopServices:
 
     @classmethod
     def from_settings(cls, settings: Settings) -> LoopServices:
-        if settings.reasoning_provider != "echo":
+        # Select the appropriate reasoning provider based on configuration.
+        if settings.reasoning_provider == "echo":
+            provider = EchoReasoningProvider()
+        elif settings.reasoning_provider == "nebius":
+            # Import lazily to avoid hard dependency when not used.
+            from backend.llm.nebius import NebiusLLMProvider
+            provider = NebiusLLMProvider(
+                api_key=settings.nebius_api_key,
+                base_url=settings.nebius_base_url,
+                model=settings.nebius_model,
+                request_timeout=settings.nebius_request_timeout,
+                max_retries=settings.nebius_max_retries,
+            )
+        else:
             raise RuntimeError(f"Unsupported reasoning provider: {settings.reasoning_provider}")
-        provider = EchoReasoningProvider()
         artifact_store = ArtifactStore(root=settings.artifact_root)
         return cls(
             provider=provider,
