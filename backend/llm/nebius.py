@@ -142,6 +142,19 @@ class NebiusLLMProvider(LLMProvider):
                 f"Data: {json.dumps(data, indent=2)[:500]}..."
             ) from e
 
+    def _build_response_format(self, output_type: type[T]) -> dict:
+        """Build the response_format parameter for structured output using JSON Schema."""
+        # Use Pydantic's model_json_schema to get the schema
+        schema = output_type.model_json_schema()
+        return {
+            "type": "json_schema",
+            "json_schema": {
+                "name": output_type.__name__,
+                "schema": schema,
+                "strict": True,
+            },
+        }
+
     def generate(
         self,
         *,
@@ -158,7 +171,7 @@ class NebiusLLMProvider(LLMProvider):
             "model": self.model,
             "messages": messages,
             "temperature": 0.1,
-            "response_format": {"type": "json_object"},
+            "response_format": self._build_response_format(output_type),
         }
 
         if self.seed is not None:

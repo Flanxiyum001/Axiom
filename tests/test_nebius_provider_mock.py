@@ -79,7 +79,13 @@ def test_request_construction_and_auth(monkeypatch):
     assert any(m["role"] == "system" and system in m["content"].lower() for m in msgs)
     assert any(m["role"] == "user" and m["content"] == prompt for m in msgs)
     assert captured["temperature"] == 0.1
-    assert captured["response_format"] == {"type": "json_object"}
+    # Verify structured output with JSON Schema is used
+    response_format = captured["response_format"]
+    assert response_format["type"] == "json_schema"
+    assert "json_schema" in response_format
+    assert response_format["json_schema"]["name"] == "Hypothesis"
+    assert "schema" in response_format["json_schema"]
+    assert response_format["json_schema"]["strict"] is True
     assert isinstance(result, Hypothesis)
     assert result.title == "Test"
 
@@ -194,3 +200,90 @@ def test_timeout_handling(monkeypatch):
     with pytest.raises(ProviderError) as exc:
         provider.generate(system="s", prompt="p", context={}, output_type=Hypothesis)
     assert "failed to generate valid output" in str(exc.value).lower()
+
+
+def test_malformed_response_rejected(monkeypatch):
+    """Test that malformed responses with wrong field names are rejected."""
+    captured = {}
+    # This is the exact malformed response observed in production
+    # Real Nemotron returned valid JSON with wrong field structure
+    malformed_response = json.dumps({
+        "hypothesis": "Increase batch size to improve throughput",
+        "lever": "batch_size",
+        "magnitude": "2x"
+    })
+    client = dummy_client_factory(captured, malformed_response)
+    monkeypatch.setattr("backend.llm.nebius.OpenAI", lambda *a, **kw: client)
+    provider = NebiusLLMProvider(api_key="k", base_url="https://api.tokenfactory.nebius.com/v1/", model="m")
+    with pytest.raises(ProviderError) as exc:
+        provider.generate(system="s", prompt="p", context={}, output_type=Hypothesis)
+    assert "failed validation" in str(exc.value).lower()
+
+
+def test_canonical_researcher_agent_processes_valid_response(monkeypatch):
+    """Test that the canonical ResearcherAgent can process a correctly structured provider response.
+    
+    This is a regression test for the exact production failure where Nemotron returned
+    valid JSON with wrong field structure (hypothesis/lever/magnitude instead of
+    statement/rationale/expected_effect).
+    """
+    from axiom.agents.researcher import ResearcherAgent
+    from axiom.domain.models import Hypothesis as CanonicalHypothesis, ResearchObjective, Direction
+    
+    captured = {}
+    # Valid canonical Hypothesis response matching axiom.domain.models.Hypothesis schema
+    valid_response = json.dumps({
+        "objective_id": "obj_test123",
+        "statement": "Increase batch size from 32 to 64 to improve throughput",
+        "rationale": "Larger batch sizes reduce kernel launch overhead and improve GPU utilization",
+        "expected_effect": {
+            "metric": "throughput",
+            "direction": "maximize",
+            "magnitude_percent": 25.0,
+            "rationale": "Expected 25% throughput improvement from reduced overhead"
+        },
+        "iteration": 0
+    })
+    client = dummy_client_factory(captured, valid_response)
+    monkeypatch.setattr("backend.llm.nebius.OpenAI", lambda *a, **kw: client)
+    
+    provider = NebiusLLMProvider(
+        api_key="test-key",
+        base_url="https://api.tokenfactory.nebius.com/v1/",
+        model="test-model",
+        max_retries=0,
+    )
+    
+    # Create a research objective
+    objective = ResearchObjective(
+        description="Increase throughput by at least 20%",
+        metric="throughput",
+        direction=Direction.MAXIMIZE,
+        target=20.0,
+    )
+    
+    # Create ResearcherAgent with the mocked provider
+    researcher = ResearcherAgent(provider)
+    
+    # Call propose - this should work without validation errors
+    hypothesis = researcher.propose(objective, iteration=0)
+    
+    # Verify the hypothesis was correctly parsed and validated
+    assert isinstance(hypothesis, CanonicalHypothesis)
+    assert hypothesis.objective_id == objective.id
+    assert hypothesis.statement == "Increase batch size from 32 to 64 to improve throughput"
+    assert hypothesis.rationale == "Larger batch sizes reduce kernel launch overhead and improve GPU utilization"
+    assert hypothesis.expected_effect is not None
+    assert hypothesis.expected_effect.metric == "throughput"
+    assert hypothesis.expected_effect.direction == Direction.MAXIMIZE
+    assert hypothesis.expected_effect.magnitude_percent == 25.0
+    assert hypothesis.expected_effect.rationale == "Expected 25% throughput improvement from reduced overhead"
+    assert hypothesis.iteration == 0
+    
+    # Verify the provider was called with JSON Schema structured output
+    response_format = captured["response_format"]
+    assert response_format["type"] == "json_schema"
+    assert "json_schema" in response_format
+    assert response_format["json_schema"]["name"] == "Hypothesis"
+    assert "schema" in response_format["json_schema"]
+    assert response_format["json_schema"]["strict"] is True
