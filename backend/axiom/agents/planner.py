@@ -83,11 +83,17 @@ class PlannerAgent:
             context=context,
             output_type=PlanOutput,
         )
+        # Ensure the plan metrics include the objective metric, preserving the
+        # semantic contract that hypothesis.expected_effect.metric ∈ experiment_plan.metrics.
+        metrics = list(plan_output.metrics)
+        if objective.metric not in metrics:
+            metrics.append(objective.metric)
+
         plan = ExperimentPlan(
             hypothesis_id=hypothesis.id,
             baseline_id=baseline_id,
             variables=plan_output.variables,
-            metrics=plan_output.metrics,
+            metrics=metrics,
             repetitions=plan_output.repetitions,
             timeout_seconds=plan_output.timeout_seconds,
         )
