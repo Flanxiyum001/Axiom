@@ -58,10 +58,14 @@ def main() -> int:
         print(f"{failure.case_id}: FAILED at {failure.stage}: {failure.error}")
 
     if outcome.report is None:
-        print("No successful cases; no report produced.")
+        print("No records produced; no report generated.")
         return 1
     print()
     print(format_text(outcome.report))
+    if outcome.failures or any(
+        record.experiment.status.value != "completed" for record in outcome.records
+    ):
+        print("Note: not all cases completed successfully; see details above.")
     return 0
 
 
