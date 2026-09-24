@@ -98,6 +98,59 @@ def test_planner_design_sets_candidate_mode():
     assert spec.plan_id == plan.id
 
 
+def test_planner_enforces_objective_metric_when_provider_returns_empty_metrics():
+    """Regression test for real Nemotron bug where Planner returned metrics=[].
+    
+    PlannerAgent must enforce the semantic invariant that objective.metric
+    is always present in ExperimentPlan.metrics, even if the LLM provider
+    returns an empty metrics list.
+    """
+    from axiom.domain.interfaces import ReasoningProvider
+    from axiom.providers.schemas import PlanOutput, CodeOutput, PlanVariable
+    from axiom.domain.models import ExpectedEffect
+
+    class EmptyMetricsProvider(ReasoningProvider):
+        name = "empty_metrics"
+        def generate(self, *, system, prompt, context, output_type):
+            if output_type is PlanOutput:
+                # Simulate the real Nemotron bug: provider returns empty metrics
+                return PlanOutput(
+                    variables=[PlanVariable(name="batch_size", baseline_value="default", candidate_value="optimized")],
+                    metrics=[],
+                    repetitions=3,
+                    timeout_seconds=60.0,
+                )
+            if output_type is CodeOutput:
+                return CodeOutput(
+                    code="print('test')",
+                    description="test",
+                    parameters={},
+                    environment={},
+                )
+            raise RuntimeError(f"Unsupported output type: {output_type}")
+
+    provider = EmptyMetricsProvider()
+    planner = PlannerAgent(provider)
+    objective = parse_objective("Reduce latency by 20%")
+    hypothesis = Hypothesis(
+        objective_id=objective.id,
+        statement="Optimizing batch_size helps",
+        rationale="test",
+        expected_effect=ExpectedEffect(
+            metric=objective.metric,
+            direction=objective.direction,
+            magnitude_percent=25.0,
+        ),
+    )
+    plan, spec = planner.design(hypothesis, objective)
+    
+    # The invariant must hold even though provider returned empty metrics
+    assert objective.metric in plan.metrics, "Planner must enforce objective metric in plan.metrics"
+    assert plan.metrics == [objective.metric], f"Expected plan.metrics to be ['{objective.metric}'], got {plan.metrics}"
+    # Also verify hypothesis expected_effect metric is covered
+    assert hypothesis.expected_effect.metric in plan.metrics
+
+
 def test_research_loop_reaches_target():
     with tempfile.TemporaryDirectory() as tmp:
         settings = Settings(db_path=":memory:", artifact_root=tmp)
