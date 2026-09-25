@@ -2,7 +2,8 @@ import time
 
 """Runner behavior: structured results, metadata, and graceful provider failures."""
 
-from pydantic import BaseModel
+import pytest
+from pydantic import BaseModel, ValidationError
 
 from axiom.domain.interfaces import ProviderError, ReasoningProvider
 from axiom.domain.models import RunStatus
@@ -197,19 +198,13 @@ def test_empty_prompt_still_runs():
 
 
 def test_missing_required_fields_rejected():
-    """Requests without system and prompt fail validation before execution."""
-    try:
+    """Requests without system and prompt fail validation naming the field."""
+    with pytest.raises(ValidationError) as system_missing:
         ExperimentRequest(prompt="p")
-    except Exception:
-        pass
-    else:
-        raise AssertionError("expected validation error for missing system")
-    try:
+    assert "system" in {error["loc"][0] for error in system_missing.value.errors()}
+    with pytest.raises(ValidationError) as prompt_missing:
         ExperimentRequest(system="s")
-    except Exception:
-        pass
-    else:
-        raise AssertionError("expected validation error for missing prompt")
+    assert "prompt" in {error["loc"][0] for error in prompt_missing.value.errors()}
 
 
 def test_slow_provider_reports_measured_latency():
@@ -224,15 +219,24 @@ def test_slow_provider_reports_measured_latency():
 
 
 def test_multiple_sequential_runs_stay_independent():
-    """Consecutive runs return distinct results with matching outputs."""
-    runner = ExperimentRunner(StubProvider())
+    """Consecutive runs return distinct results echoing each request."""
+    class EchoingProvider(ReasoningProvider):
+        """Test double answering with the incoming prompt."""
+
+        name = "echoing"
+
+        def generate(self, *, system, prompt, context, output_type):
+            """Return the prompt as the answer."""
+            return SampleOutput(answer=prompt)
+
+    runner = ExperimentRunner(EchoingProvider())
     results = [
         runner.run(ExperimentRequest(system="s", prompt=f"q{i}"), output_type=SampleOutput)
         for i in range(3)
     ]
     assert all(result.status == RunStatus.COMPLETED for result in results)
-    assert len({result.output.answer for result in results}) == 1
-    assert all(result.provider == "stub" for result in results)
+    assert [result.output.answer for result in results] == ["q0", "q1", "q2"]
+    assert len({id(result) for result in results}) == 3
 
 
 def test_failed_result_preserves_metadata():
