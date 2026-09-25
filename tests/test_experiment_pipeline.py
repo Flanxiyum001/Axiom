@@ -188,3 +188,66 @@ def test_system_prompt_reaches_provider():
     )
     pipeline.run(_dataset(), output_type=TextOutput, system="Be concise.")
     assert seen == ["Be concise.", "Be concise."]
+
+
+def test_all_cases_unexpectedly_failing():
+    """Total collapse yields failures only and no report, without raising."""
+    runner = ExperimentRunner(StubProvider())
+    original = runner.run
+
+    def broken(request, *, output_type):
+        raise RuntimeError("kaput")
+
+    runner.run = broken
+    pipeline = ExperimentPipeline(runner, EvaluationFramework([ResponseEvaluator()]))
+    result = pipeline.run(_dataset(), output_type=TextOutput)
+    assert result.records == []
+    assert len(result.failures) == 2
+    assert all(failure.stage == "run" for failure in result.failures)
+    assert result.report is None
+
+
+def test_aggregation_bug_surfaces_loudly():
+    """An aggregation crash propagates instead of forging an empty report."""
+    import axiom.pipeline.pipeline as pipeline_module
+
+    original = pipeline_module.aggregate_benchmark
+
+    def broken(benchmark, records, *, label=""):
+        raise RuntimeError("aggregate kaput")
+
+    pipeline_module.aggregate_benchmark = broken
+    try:
+        pipeline = _pipeline()
+        try:
+            pipeline.run(_dataset(), output_type=TextOutput)
+        except RuntimeError as exc:
+            assert "aggregate kaput" in str(exc)
+            return
+        raise AssertionError("expected RuntimeError")
+    finally:
+        pipeline_module.aggregate_benchmark = original
+
+
+def test_mixed_provider_outcomes_visible_in_report():
+    """One failed and one completed experiment share a report honestly."""
+    class SelectiveProvider(StubProvider):
+        """Test double failing only the second benchmark case."""
+
+        def generate(self, *, system, prompt, context, output_type):
+            """Raise for the second case, answer everything else."""
+            if "Second" in prompt:
+                raise ProviderError("down")
+            return super().generate(
+                system=system, prompt=prompt, context=context, output_type=output_type
+            )
+
+    pipeline = _pipeline(provider=SelectiveProvider())
+    result = pipeline.run(_dataset(), output_type=TextOutput)
+    assert len(result.records) == 2
+    assert result.failures == []
+    assert result.report is not None
+    response = result.report.summary_for("response")
+    assert response is not None
+    assert response.passed == 1
+    assert response.failed == 1

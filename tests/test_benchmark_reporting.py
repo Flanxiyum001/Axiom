@@ -206,3 +206,56 @@ def test_large_finite_scores_keep_finite_mean():
     assert summary.mean == huge
     assert summary.min == huge
     assert summary.max == huge
+
+
+def test_single_record_report():
+    """One record still forms a complete report with exact statistics."""
+    report = aggregate_benchmark("bench", [_record("only", 7.0)])
+    assert report.cases == 1
+    summary = report.summary_for("accuracy")
+    assert summary is not None
+    assert summary.scored == 1
+    assert summary.mean == 7.0
+    assert summary.min == 7.0
+    assert summary.max == 7.0
+
+
+def test_multiple_evaluators_summarized_separately():
+    """Each evaluator gets its own summary within one shared report."""
+    experiment = ExperimentResult(status="completed", latency_ms=50.0, provider="stub")
+    evaluation = EvaluationResult(
+        experiment=experiment,
+        outcomes=[
+            EvaluatorOutcome(evaluator="accuracy", passed=True, score=1.0),
+            EvaluatorOutcome(evaluator="latency", passed=True, score=50.0),
+        ],
+    )
+    report = aggregate_benchmark(
+        "bench", [CaseRecord(case_id="c1", experiment=experiment, evaluation=evaluation)]
+    )
+    assert len(report.summaries) == 2
+    assert report.summary_for("accuracy") is not None
+    assert report.summary_for("accuracy").mean == 1.0
+    assert report.summary_for("latency") is not None
+    assert report.summary_for("latency").mean == 50.0
+
+
+def test_failed_experiments_still_aggregate():
+    """Failed-status records contribute measurements and failed tallies."""
+    good = _record("c1", 100.0)
+    bad_experiment = ExperimentResult(status="failed", latency_ms=200.0, provider="stub", error="down")
+    bad = CaseRecord(
+        case_id="c2",
+        experiment=bad_experiment,
+        evaluation=EvaluationResult(
+            experiment=bad_experiment,
+            outcomes=[EvaluatorOutcome(evaluator="accuracy", passed=False, score=None)],
+        ),
+    )
+    report = aggregate_benchmark("bench", [good, bad])
+    assert report.cases == 2
+    summary = report.summary_for("accuracy")
+    assert summary is not None
+    assert summary.scored == 1
+    assert summary.failed == 1
+    assert [record.case_id for record in report.records] == ["c1", "c2"]

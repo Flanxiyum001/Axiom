@@ -2,7 +2,8 @@ import time
 
 """Runner behavior: structured results, metadata, and graceful provider failures."""
 
-from pydantic import BaseModel
+import pytest
+from pydantic import BaseModel, ValidationError
 
 from axiom.domain.interfaces import ProviderError, ReasoningProvider
 from axiom.domain.models import RunStatus
@@ -183,3 +184,70 @@ def test_none_output_becomes_failed_result():
     assert result.output is None
     assert result.error is not None
     assert "no output" in result.error
+
+
+def test_empty_prompt_still_runs():
+    """Empty prompts are accepted and flow to the provider unchanged."""
+    provider = StubProvider()
+    result = ExperimentRunner(provider).run(
+        ExperimentRequest(system="s", prompt=""),
+        output_type=SampleOutput,
+    )
+    assert result.status == RunStatus.COMPLETED
+    assert provider.seen["prompt"] == ""
+
+
+def test_missing_required_fields_rejected():
+    """Requests without system and prompt fail validation naming the field."""
+    with pytest.raises(ValidationError) as system_missing:
+        ExperimentRequest(prompt="p")
+    assert "system" in {error["loc"][0] for error in system_missing.value.errors()}
+    with pytest.raises(ValidationError) as prompt_missing:
+        ExperimentRequest(system="s")
+    assert "prompt" in {error["loc"][0] for error in prompt_missing.value.errors()}
+
+
+def test_slow_provider_reports_measured_latency():
+    """A sluggish provider still completes with honestly measured latency."""
+    provider = StubProvider(delay=0.01)
+    result = ExperimentRunner(provider).run(
+        ExperimentRequest(system="s", prompt="p"),
+        output_type=SampleOutput,
+    )
+    assert result.status == RunStatus.COMPLETED
+    assert result.latency_ms >= 5.0
+
+
+def test_multiple_sequential_runs_stay_independent():
+    """Consecutive runs return distinct results echoing each request."""
+    class EchoingProvider(ReasoningProvider):
+        """Test double answering with the incoming prompt."""
+
+        name = "echoing"
+
+        def generate(self, *, system, prompt, context, output_type):
+            """Return the prompt as the answer."""
+            return SampleOutput(answer=prompt)
+
+    runner = ExperimentRunner(EchoingProvider())
+    results = [
+        runner.run(ExperimentRequest(system="s", prompt=f"q{i}"), output_type=SampleOutput)
+        for i in range(3)
+    ]
+    assert all(result.status == RunStatus.COMPLETED for result in results)
+    assert [result.output.answer for result in results] == ["q0", "q1", "q2"]
+    assert len({id(result) for result in results}) == 3
+
+
+def test_failed_result_preserves_metadata():
+    """FAILED results still carry provider, timing, and timestamps."""
+    provider = StubProvider(error=ProviderError("down"))
+    result = ExperimentRunner(provider).run(
+        ExperimentRequest(system="s", prompt="p"),
+        output_type=SampleOutput,
+    )
+    assert result.status == RunStatus.FAILED
+    assert result.provider == "stub"
+    assert result.latency_ms >= 0.0
+    assert result.completed_at is not None
+    assert result.started_at <= result.completed_at

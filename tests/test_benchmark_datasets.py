@@ -202,3 +202,51 @@ def test_registry_unknown_name():
         assert "nope" in str(exc)
         return
     raise AssertionError("expected KeyError")
+
+
+def test_empty_mapping_rejected():
+    """An empty mapping fails as invalid rather than an empty dataset."""
+    try:
+        load_dict({})
+    except BenchmarkLoadError:
+        return
+    raise AssertionError("expected BenchmarkLoadError")
+
+
+def test_invalid_case_types_rejected():
+    """Non-list cases and non-mapping entries fail validation cleanly."""
+    for payload in (
+        {"name": "x", "cases": "not-a-list"},
+        {"name": "x", "cases": [42]},
+        {"name": "x", "cases": [{"id": "a", "input": {"q": 1}}]},
+        {"name": "x", "cases": "none"},
+    ):
+        try:
+            load_dict(payload)
+        except BenchmarkLoadError:
+            continue
+        raise AssertionError(f"expected BenchmarkLoadError for {payload!r}")
+
+
+def test_minimal_case_uses_defaults():
+    """Cases need only id and input; everything else falls back."""
+    dataset = load_dict({"name": "x", "cases": [{"id": "a", "input": "q"}]})
+    (case,) = dataset.cases
+    assert case.expected_output is None
+    assert case.metadata == {}
+    assert case.evaluation.latency_budget_ms is None
+    assert case.evaluation.token_budget is None
+    assert case.evaluation.min_response_length is None
+
+
+def test_large_dataset_loads():
+    """Hundreds of cases load with order and lookup intact."""
+    payload = {
+        "name": "big",
+        "cases": [{"id": f"case-{i:04d}", "input": f"Question {i}?"} for i in range(300)],
+    }
+    dataset = load_dict(payload)
+    assert len(dataset.cases) == 300
+    assert dataset.case_ids() == [f"case-{i:04d}" for i in range(300)]
+    assert dataset.get_case("case-0150") is not None
+    assert dataset.get_case("case-0150").input == "Question 150?"
