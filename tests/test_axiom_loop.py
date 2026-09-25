@@ -254,8 +254,11 @@ def test_levers_behave_differently():
 
 
 def test_unknown_lever_cannot_fake_win():
-    baseline = _run_benchmark("made_up_lever", "baseline")
-    candidate = _run_benchmark("made_up_lever", "candidate")
+    """Unknown levers map to identical workloads, so medians must agree closely."""
+    import statistics
+
+    baseline = statistics.median(_run_benchmark("made_up_lever", "baseline") for _ in range(3))
+    candidate = statistics.median(_run_benchmark("made_up_lever", "candidate") for _ in range(3))
     assert abs(baseline - candidate) / baseline < 0.30
 
 
