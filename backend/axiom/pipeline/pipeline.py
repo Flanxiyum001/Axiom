@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from axiom.benchmarks.adapters import case_to_request
 from axiom.benchmarks.models import BenchmarkCase, BenchmarkDataset
@@ -13,7 +13,8 @@ from axiom.pipeline.models import CaseFailure, PipelineResult
 from axiom.reporting.aggregation import aggregate_benchmark
 from axiom.reporting.models import CaseRecord
 
-DEFAULT_MAX_CONCURRENCY = 4
+DEFAULT_MAX_CONCURRENCY = 1
+RECOMMENDED_MAX_CONCURRENCY = 4
 
 
 class _CaseError(Exception):
@@ -53,7 +54,7 @@ class ExperimentPipeline:
         framework: EvaluationFramework,
         *,
         fail_fast: bool = False,
-        max_concurrency: int = 1,
+        max_concurrency: int = DEFAULT_MAX_CONCURRENCY,
     ) -> None:
         """Bind components; max_concurrency bounds parallel case execution."""
         if isinstance(max_concurrency, bool) or not isinstance(max_concurrency, int):
@@ -119,25 +120,35 @@ class ExperimentPipeline:
         output_type: type[T],
         system: str,
     ) -> tuple[list[CaseRecord], list[CaseFailure]]:
-        """Process cases on a bounded pool, reassembled in dataset order."""
-        records: list[CaseRecord] = []
-        failures: list[CaseFailure] = []
-        with ThreadPoolExecutor(
+        """Process windowed chunks, reassembled in dataset order."""
+        cases = dataset.cases
+        records: dict[int, CaseRecord] = {}
+        failures: dict[int, CaseFailure] = {}
+        executor = ThreadPoolExecutor(
             max_workers=self.max_concurrency, thread_name_prefix="axiom-case"
-        ) as executor:
-            futures = [
-                executor.submit(self._run_case, case, output_type=output_type, system=system)
-                for case in dataset.cases
-            ]
-            for future in futures:
-                try:
-                    records.append(future.result())
-                except _CaseError as err:
-                    if self.fail_fast:
-                        executor.shutdown(cancel_futures=True)
-                        raise err.cause
-                    failures.append(err.to_failure())
-        return records, failures
+        )
+        abandoned = False
+        try:
+            for start in range(0, len(cases), self.max_concurrency):
+                chunk = list(enumerate(cases[start:start + self.max_concurrency], start=start))
+                future_to_index = {
+                    executor.submit(self._run_case, case, output_type=output_type, system=system): index
+                    for index, case in chunk
+                }
+                for future in as_completed(future_to_index):
+                    index = future_to_index[future]
+                    try:
+                        records[index] = future.result()
+                    except _CaseError as err:
+                        if self.fail_fast:
+                            abandoned = True
+                            executor.shutdown(wait=False, cancel_futures=True)
+                            raise err.cause
+                        failures[index] = err.to_failure()
+        finally:
+            if not abandoned:
+                executor.shutdown(wait=True)
+        return [records[i] for i in sorted(records)], [failures[i] for i in sorted(failures)]
 
     def _run_case(
         self,

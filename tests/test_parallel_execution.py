@@ -10,7 +10,7 @@ from axiom.domain.interfaces import ProviderError, ReasoningProvider
 from axiom.evaluation.evaluators import LatencyEvaluator, ResponseEvaluator
 from axiom.evaluation.framework import EvaluationFramework
 from axiom.experiments.runner import ExperimentRunner
-from axiom.pipeline.pipeline import DEFAULT_MAX_CONCURRENCY, ExperimentPipeline
+from axiom.pipeline.pipeline import ExperimentPipeline, RECOMMENDED_MAX_CONCURRENCY
 
 
 class TextOutput(BaseModel):
@@ -142,7 +142,7 @@ def test_default_concurrency_is_sequential():
     assert ExperimentPipeline(
         ExperimentRunner(EchoProvider()), EvaluationFramework()
     ).max_concurrency == 1
-    assert DEFAULT_MAX_CONCURRENCY >= 1
+    assert RECOMMENDED_MAX_CONCURRENCY == 4
 
 
 def test_out_of_order_completion_preserves_association():
@@ -248,6 +248,45 @@ def test_fail_fast_parallel_reraises():
         assert "kaput" in str(exc)
         return
     raise AssertionError("expected RuntimeError")
+
+
+def test_fail_fast_does_not_wait_for_blocked_cases():
+    """Fail-fast reacts to the failure while an earlier case stays blocked."""
+    gate = threading.Event()
+    finished = []
+    lock = threading.Lock()
+
+    class GateFailProvider(ReasoningProvider):
+        """Test double blocking case-000 until the test releases it."""
+
+        name = "gate-fail"
+
+        def generate(self, *, system, prompt, context, output_type):
+            """Hold the first case on a gate; answer everything else."""
+            if "case-000" in prompt:
+                assert gate.wait(timeout=60)
+            with lock:
+                finished.append(prompt)
+            return TextOutput(answer="ok")
+
+    runner = ExperimentRunner(GateFailProvider())
+    original = runner.run
+
+    def broken(request, *, output_type):
+        if "case-001" in request.prompt:
+            raise RuntimeError("kaput")
+        return original(request, output_type=output_type)
+
+    runner.run = broken
+    pipeline = ExperimentPipeline(runner, EvaluationFramework(), fail_fast=True, max_concurrency=2)
+    try:
+        pipeline.run(_dataset(size=2), output_type=TextOutput)
+    except RuntimeError as exc:
+        assert "kaput" in str(exc)
+    else:
+        raise AssertionError("expected RuntimeError")
+    assert not any("case-000" in prompt for prompt in finished)
+    gate.set()
 
 
 def test_deterministic_verdicts_across_runs():
