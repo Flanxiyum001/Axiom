@@ -236,3 +236,34 @@ def test_nameless_evaluator_never_raises_attribute_error():
     assert evaluation.passed is False
     assert evaluation.outcomes[0].evaluator == "Nameless"
     assert "kaput" in (evaluation.outcomes[0].error or "")
+
+
+def test_framework_without_evaluators_is_inconclusive():
+    """No evaluators means no verdicts and an inconclusive overall flag."""
+    evaluation = EvaluationFramework().evaluate(
+        ExperimentResult(status="completed", latency_ms=1.0, provider="stub")
+    )
+    assert evaluation.outcomes == []
+    assert evaluation.passed is None
+
+
+def test_mixed_pass_and_inconclusive_stays_passing():
+    """Inconclusive outcomes never veto a decisive pass."""
+    framework = EvaluationFramework([LatencyEvaluator(100.0), TokenUsageEvaluator()])
+    evaluation = framework.evaluate(
+        ExperimentResult(status="completed", latency_ms=1.0, provider="stub")
+    )
+    assert evaluation.passed is True
+    assert len(evaluation.outcomes) == 2
+
+
+def test_failed_status_experiment_still_evaluates():
+    """Evaluators score measurements without gating on result status."""
+    experiment = _result(
+        status="failed",
+        latency_ms=5.0,
+        output=TextOutput(answer="partial"),
+        error="ProviderError: down",
+    )
+    evaluation = EvaluationFramework([LatencyEvaluator(100.0), ResponseEvaluator()]).evaluate(experiment)
+    assert evaluation.passed is True

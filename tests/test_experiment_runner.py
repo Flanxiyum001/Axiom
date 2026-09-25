@@ -183,3 +183,67 @@ def test_none_output_becomes_failed_result():
     assert result.output is None
     assert result.error is not None
     assert "no output" in result.error
+
+
+def test_empty_prompt_still_runs():
+    """Empty prompts are accepted and flow to the provider unchanged."""
+    provider = StubProvider()
+    result = ExperimentRunner(provider).run(
+        ExperimentRequest(system="s", prompt=""),
+        output_type=SampleOutput,
+    )
+    assert result.status == RunStatus.COMPLETED
+    assert provider.seen["prompt"] == ""
+
+
+def test_missing_required_fields_rejected():
+    """Requests without system and prompt fail validation before execution."""
+    try:
+        ExperimentRequest(prompt="p")
+    except Exception:
+        pass
+    else:
+        raise AssertionError("expected validation error for missing system")
+    try:
+        ExperimentRequest(system="s")
+    except Exception:
+        pass
+    else:
+        raise AssertionError("expected validation error for missing prompt")
+
+
+def test_slow_provider_reports_measured_latency():
+    """A sluggish provider still completes with honestly measured latency."""
+    provider = StubProvider(delay=0.01)
+    result = ExperimentRunner(provider).run(
+        ExperimentRequest(system="s", prompt="p"),
+        output_type=SampleOutput,
+    )
+    assert result.status == RunStatus.COMPLETED
+    assert result.latency_ms >= 5.0
+
+
+def test_multiple_sequential_runs_stay_independent():
+    """Consecutive runs return distinct results with matching outputs."""
+    runner = ExperimentRunner(StubProvider())
+    results = [
+        runner.run(ExperimentRequest(system="s", prompt=f"q{i}"), output_type=SampleOutput)
+        for i in range(3)
+    ]
+    assert all(result.status == RunStatus.COMPLETED for result in results)
+    assert len({result.output.answer for result in results}) == 1
+    assert all(result.provider == "stub" for result in results)
+
+
+def test_failed_result_preserves_metadata():
+    """FAILED results still carry provider, timing, and timestamps."""
+    provider = StubProvider(error=ProviderError("down"))
+    result = ExperimentRunner(provider).run(
+        ExperimentRequest(system="s", prompt="p"),
+        output_type=SampleOutput,
+    )
+    assert result.status == RunStatus.FAILED
+    assert result.provider == "stub"
+    assert result.latency_ms >= 0.0
+    assert result.completed_at is not None
+    assert result.started_at <= result.completed_at
