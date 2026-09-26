@@ -298,3 +298,43 @@ def test_deterministic_verdicts_across_runs():
         record.case_id for record in second.records
     ]
     assert _tallies(first) == _tallies(second)
+
+
+def test_rolling_window_starts_later_cases_early():
+    """A freed worker picks up the next case while an early case stays blocked."""
+    gate = threading.Event()
+    case2_done = threading.Event()
+
+    class RollingProvider(ReasoningProvider):
+        """Test double blocking case-000 while signaling case-002 completion."""
+
+        name = "rolling"
+
+        def generate(self, *, system, prompt, context, output_type):
+            """Hold the first case on a gate; flag when the third finishes."""
+            if "case-000" in prompt:
+                assert gate.wait(timeout=60)
+            if "case-002" in prompt:
+                case2_done.set()
+            return TextOutput(answer="ok")
+
+    holder = {}
+    pipeline = ExperimentPipeline(
+        ExperimentRunner(RollingProvider()), EvaluationFramework(), max_concurrency=2
+    )
+
+    def target():
+        holder["result"] = pipeline.run(_dataset(size=3), output_type=TextOutput)
+
+    worker = threading.Thread(target=target)
+    worker.start()
+    try:
+        assert case2_done.wait(timeout=60)
+        assert not gate.is_set()
+    finally:
+        gate.set()
+        worker.join(timeout=60)
+    assert not worker.is_alive()
+    result = holder["result"]
+    assert [record.case_id for record in result.records] == ["case-000", "case-001", "case-002"]
+    assert result.failures == []

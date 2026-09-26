@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from concurrent.futures import ThreadPoolExecutor, as_completed
+from concurrent.futures import FIRST_COMPLETED, Future, ThreadPoolExecutor, wait
 
 from axiom.benchmarks.adapters import case_to_request
 from axiom.benchmarks.models import BenchmarkCase, BenchmarkDataset
@@ -120,31 +120,43 @@ class ExperimentPipeline:
         output_type: type[T],
         system: str,
     ) -> tuple[list[CaseRecord], list[CaseFailure]]:
-        """Process windowed chunks, reassembled in dataset order."""
+        """Process a rolling window, reassembled in dataset order."""
         cases = dataset.cases
         records: dict[int, CaseRecord] = {}
         failures: dict[int, CaseFailure] = {}
+        pending = iter(range(len(cases)))
         executor = ThreadPoolExecutor(
             max_workers=self.max_concurrency, thread_name_prefix="axiom-case"
         )
         abandoned = False
         try:
-            for start in range(0, len(cases), self.max_concurrency):
-                chunk = list(enumerate(cases[start:start + self.max_concurrency], start=start))
-                future_to_index = {
-                    executor.submit(self._run_case, case, output_type=output_type, system=system): index
-                    for index, case in chunk
-                }
-                for future in as_completed(future_to_index):
-                    index = future_to_index[future]
+            in_flight: dict[Future, int] = {}
+            for _ in range(min(self.max_concurrency, len(cases))):
+                index = next(pending)
+                in_flight[
+                    executor.submit(self._run_case, cases[index], output_type=output_type, system=system)
+                ] = index
+            while in_flight:
+                done, _ = wait(in_flight, return_when=FIRST_COMPLETED)
+                for future in done:
+                    index = in_flight.pop(future)
                     try:
                         records[index] = future.result()
                     except _CaseError as err:
                         if self.fail_fast:
                             abandoned = True
+                            for outstanding in in_flight:
+                                outstanding.cancel()
                             executor.shutdown(wait=False, cancel_futures=True)
                             raise err.cause
                         failures[index] = err.to_failure()
+                    try:
+                        nxt = next(pending)
+                    except StopIteration:
+                        continue
+                    in_flight[
+                        executor.submit(self._run_case, cases[nxt], output_type=output_type, system=system)
+                    ] = nxt
         finally:
             if not abandoned:
                 executor.shutdown(wait=True)

@@ -21,8 +21,10 @@ BenchmarkDataset → case_to_request() → runner.run() → framework.evaluate()
 
 `max_concurrency` bounds how many cases run at once (default `1`, i.e.
 sequential, preserving existing behavior). Values above 1 run cases on a
-thread pool with exactly that many workers, submitted in bounded windows so
-queued work never grows with dataset size. `RECOMMENDED_MAX_CONCURRENCY`
+thread pool with exactly that many workers in a rolling window: an initial
+window is submitted, and each completion immediately submits the next
+unstarted case, so workers never idle while cases remain and queued work
+never grows with dataset size. `RECOMMENDED_MAX_CONCURRENCY`
 (`4`) is the suggested opt-in value, conservative enough for API rate limits
 while helping I/O-bound provider calls; tune per provider.
 
