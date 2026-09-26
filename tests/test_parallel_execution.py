@@ -338,3 +338,43 @@ def test_rolling_window_starts_later_cases_early():
     result = holder["result"]
     assert [record.case_id for record in result.records] == ["case-000", "case-001", "case-002"]
     assert result.failures == []
+
+
+def test_fail_fast_never_submits_after_observed_failure():
+    """Fail-fast raises before any replenishment once a failure is observed."""
+    gate = threading.Event()
+    started = []
+    lock = threading.Lock()
+
+    class SlowSuccessProvider(ReasoningProvider):
+        """Test double blocking case-000 while tracking every start."""
+
+        name = "slow-success"
+
+        def generate(self, *, system, prompt, context, output_type):
+            """Hold the first case on a gate; record all starts."""
+            if "case-000" in prompt:
+                assert gate.wait(timeout=60)
+            with lock:
+                started.append(prompt)
+            return TextOutput(answer="ok")
+
+    runner = ExperimentRunner(SlowSuccessProvider())
+    original = runner.run
+
+    def broken(request, *, output_type):
+        if "case-001" in request.prompt:
+            raise RuntimeError("kaput")
+        return original(request, output_type=output_type)
+
+    runner.run = broken
+    pipeline = ExperimentPipeline(runner, EvaluationFramework(), fail_fast=True, max_concurrency=2)
+    try:
+        pipeline.run(_dataset(size=3), output_type=TextOutput)
+    except RuntimeError as exc:
+        assert "kaput" in str(exc)
+    else:
+        raise AssertionError("expected RuntimeError")
+    finally:
+        gate.set()
+    assert not any("case-002" in prompt for prompt in started)

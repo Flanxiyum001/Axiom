@@ -150,10 +150,11 @@ class ExperimentPipeline:
                             executor.shutdown(wait=False, cancel_futures=True)
                             raise err.cause
                         failures[index] = err.to_failure()
+                for _ in range(len(done)):
                     try:
                         nxt = next(pending)
                     except StopIteration:
-                        continue
+                        break
                     in_flight[
                         executor.submit(self._run_case, cases[nxt], output_type=output_type, system=system)
                     ] = nxt
