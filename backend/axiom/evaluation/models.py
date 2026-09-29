@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from datetime import datetime
+from typing import Any
 
 from pydantic import BaseModel, Field
 
@@ -23,7 +24,7 @@ class EvaluatorOutcome(BaseModel):
 class EvaluationResult(BaseModel):
     """Aggregated verdicts for one experiment result, which is never modified."""
 
-    experiment: ExperimentResult
+    experiment: ExperimentResult[Any]
     outcomes: list[EvaluatorOutcome] = Field(default_factory=list)
     passed: bool | None = None
     evaluated_at: datetime = Field(default_factory=utcnow)
