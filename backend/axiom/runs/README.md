@@ -21,7 +21,8 @@ RunStore.load(run_id) → BenchmarkRun
 - `store.py` — `RunStore` interface (`save`, `load`, `exists`, `list_runs`)
   plus `FileRunStore` (one indented JSON file per run, atomic writes).
   Missing runs raise `RunNotFoundError`; backend failures raise
-  `RunStoreError`.
+  `RunStoreError`; listings skip foreign files with a warning while direct
+  loads stay strict.
 
 ## Semantics
 

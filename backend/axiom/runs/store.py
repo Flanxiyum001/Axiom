@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import os
 import tempfile
 from abc import ABC, abstractmethod
@@ -11,6 +12,8 @@ from pathlib import Path
 from pydantic import ValidationError
 
 from axiom.runs.models import BenchmarkRun
+
+logger = logging.getLogger("axiom.runs")
 
 
 class RunNotFoundError(KeyError):
@@ -95,11 +98,20 @@ class FileRunStore(RunStore):
         return self._path(run_id).is_file()
 
     def list_runs(self) -> list[str]:
-        """Sorted IDs of all stored runs."""
+        """Sorted IDs of valid stored runs, skipping foreign files."""
         try:
-            return sorted(path.stem for path in self.root.glob("*.json") if path.is_file())
+            candidates = [path for path in self.root.glob("*.json") if path.is_file()]
         except OSError as exc:
             raise RunStoreError(f"Cannot list runs in {self.root}: {exc}") from exc
+        valid: list[str] = []
+        for path in candidates:
+            try:
+                BenchmarkRun.model_validate_json(path.read_bytes())
+            except Exception as exc:  # noqa: BLE001 - foreign files are skipped loudly
+                logger.warning("Skipping non-run file %s: %s", path.name, exc)
+                continue
+            valid.append(path.stem)
+        return sorted(valid)
 
     def _path(self, run_id: str) -> Path:
         """Resolve the file for a run ID, rejecting path escapes."""

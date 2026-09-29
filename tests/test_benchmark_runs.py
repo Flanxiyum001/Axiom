@@ -4,6 +4,7 @@ import json
 import tempfile
 from pathlib import Path
 
+import pytest
 from pydantic import BaseModel
 
 from axiom.benchmarks.loader import load_dict
@@ -207,12 +208,22 @@ def test_record_rejects_non_pipeline_input():
 
 
 def test_store_rejects_escaping_ids():
-    """Run IDs that escape the store directory are refused."""
+    """Run IDs that escape the store directory are refused as invalid."""
     with tempfile.TemporaryDirectory() as tmp:
         store = FileRunStore(tmp)
         for bad in ("../evil", "a/b", ""):
-            try:
+            with pytest.raises(ValueError):
                 store.load(bad)
-            except (ValueError, RunNotFoundError, RunStoreError):
-                continue
-            raise AssertionError(f"expected error for {bad!r}")
+
+
+def test_list_skips_unrelated_files():
+    """Foreign JSON files never appear in listings yet stay load-strict."""
+    with tempfile.TemporaryDirectory() as tmp:
+        store = FileRunStore(tmp)
+        run = _run()
+        store.save(run)
+        Path(tmp, "notes.json").write_text('{"note": "not a run"}', encoding="utf-8")
+        Path(tmp, "corrupt.json").write_text("{broken", encoding="utf-8")
+        assert store.list_runs() == [run.id]
+        with pytest.raises(RunStoreError):
+            store.load("notes")
