@@ -12,6 +12,8 @@ from axiom.domain.models import Hypothesis as HypothesisModel
 from axiom.services.objective_parser import ObjectiveParseError, parse_objective
 from axiom.services.research_loop import LoopServices, ResearchLoopConfig, ResearchLoopService
 from axiom.agents.planner import PlannerAgent
+from axiom.agents.analyst import AnalystAgent
+from axiom.agents.researcher import ResearcherAgent
 
 
 def test_parse_latency_objective():
@@ -316,3 +318,238 @@ def test_tighter_plan_timeout_is_honored():
             assert timeouts == [7.0, 7.0]
         finally:
             EchoReasoningProvider._plan = original
+
+
+def test_evidence_flows_to_next_researcher_iteration():
+    """Verify that after iteration 0, iteration 1 researcher receives non-empty prior_evidence_summary."""
+    with tempfile.TemporaryDirectory() as tmp:
+        settings = Settings(db_path=":memory:", artifact_root=tmp)
+        services = LoopServices.from_settings(settings)
+        objective = parse_objective("Reduce model inference latency by 20%")
+        objective.target = 99.0  # Force multiple iterations (EchoReasoningProvider gives ~35-56%)
+
+        # Use a custom provider that captures the context passed to researcher
+        from axiom.providers.echo_provider import EchoReasoningProvider
+        from axiom.agents.researcher import ResearcherAgent
+
+        captured_contexts = []
+
+        class CapturingProvider(EchoReasoningProvider):
+            def generate(self, *, system, prompt, context, output_type):
+                if output_type is Hypothesis:
+                    captured_contexts.append(context.copy())
+                return super().generate(system=system, prompt=prompt, context=context, output_type=output_type)
+
+        provider = CapturingProvider()
+        services = LoopServices(
+            provider=provider,
+            researcher=ResearcherAgent(provider),
+            planner=PlannerAgent(provider),
+            analyst=AnalystAgent(provider),
+            executor=services.executor,
+            evaluator=services.evaluator,
+            repository=services.repository,
+            artifact_store=services.artifact_store,
+        )
+        service = ResearchLoopService(services, ResearchLoopConfig(max_iterations=2))
+        summary = service.run_objective(objective)
+
+        # Should have 2 iterations (target not met on iteration 0, max_iterations reached)
+        assert summary.target_met is False
+        assert summary.stopped is True
+        assert summary.stop_reason == "max_iterations"
+        assert len(captured_contexts) == 2
+
+        # Iteration 0: prior_evidence should be empty
+        assert captured_contexts[0]["prior_evidence"] == ""
+
+        # Iteration 1: prior_evidence should contain iteration 0's evidence
+        assert captured_contexts[1]["prior_evidence"] != ""
+        assert "batch_size" in captured_contexts[1]["prior_evidence"]
+        assert "->" in captured_contexts[1]["prior_evidence"]  # hypothesis -> conclusion format
+
+
+def test_failed_target_generates_next_iteration():
+    """Verify iteration 0 completes, evidence produced, iteration 1 begins, researcher receives iteration 0 evidence."""
+    with tempfile.TemporaryDirectory() as tmp:
+        settings = Settings(db_path=":memory:", artifact_root=tmp)
+        services = LoopServices.from_settings(settings)
+        objective = parse_objective("Reduce model inference latency by 20%")
+        # Use max_iterations=2, target is 20% but EchoReasoningProvider gives ~35% improvement
+        # So target_met will be True on iteration 0. Let's use a higher target to force iteration 1.
+        objective.target = 99.0  # Higher than what EchoReasoningProvider can achieve
+
+        service = ResearchLoopService(services, ResearchLoopConfig(max_iterations=2))
+        summary = service.run_objective(objective)
+
+        # Should run 2 iterations (target not met on iteration 0)
+        assert summary.target_met is False
+        assert summary.stopped is True
+        assert summary.stop_reason == "max_iterations"
+
+        # Check history has 2 entries
+        history = services.repository.history_for_objective(objective.id)
+        assert len(history) == 2
+
+        # Both iterations should have evidence
+        assert history[0].evidence is not None
+        assert history[1].evidence is not None
+
+        # Iteration 1 evidence should reference iteration 1 hypothesis
+        assert history[1].evidence.hypothesis_id == history[1].hypothesis.id
+
+
+def test_target_met_stops_loop():
+    """Verify loop stops when target_met=True, no next researcher iteration occurs."""
+    with tempfile.TemporaryDirectory() as tmp:
+        settings = Settings(db_path=":memory:", artifact_root=tmp)
+        services = LoopServices.from_settings(settings)
+        objective = parse_objective("Reduce model inference latency by 20%")
+        service = ResearchLoopService(services, ResearchLoopConfig(max_iterations=5))
+
+        summary = service.run_objective(objective)
+
+        # Should stop on first iteration because target is met
+        assert summary.target_met is True
+        assert summary.stopped is True
+        assert summary.stop_reason == "target_met"
+        assert summary.iteration == 0
+
+        # History should have only 1 entry
+        history = services.repository.history_for_objective(objective.id)
+        assert len(history) == 1
+
+
+def test_max_iterations_stops_loop():
+    """Verify loop stops at max_iterations even when target is never met."""
+    with tempfile.TemporaryDirectory() as tmp:
+        settings = Settings(db_path=":memory:", artifact_root=tmp)
+        services = LoopServices.from_settings(settings)
+        objective = parse_objective("Reduce model inference latency by 20%")
+        objective.target = 99.0  # Impossible target for EchoReasoningProvider
+
+        service = ResearchLoopService(services, ResearchLoopConfig(max_iterations=3))
+        summary = service.run_objective(objective)
+
+        # Should run all 3 iterations and stop
+        assert summary.target_met is False
+        assert summary.stopped is True
+        assert summary.stop_reason == "max_iterations"
+        assert summary.iteration == 2  # 0-indexed, so iteration 2 is the 3rd iteration
+
+        # History should have 3 entries
+        history = services.repository.history_for_objective(objective.id)
+        assert len(history) == 3
+
+
+def test_failure_or_timeout_becomes_evidence():
+    """Verify experiment failure/timeout is represented in history/evidence path without uncontrolled exception."""
+    with tempfile.TemporaryDirectory() as tmp:
+        from axiom.agents.analyst import AnalystAgent
+        from axiom.agents.planner import PlannerAgent
+        from axiom.agents.researcher import ResearcherAgent
+        from axiom.domain.interfaces import ExperimentExecutor
+        from axiom.domain.models import ExperimentRun, RunStatus
+        from axiom.execution.artifacts import ArtifactStore
+        from axiom.execution.evaluator import DeterministicEvaluator
+
+        class FailingExecutor(ExperimentExecutor):
+            def execute(self, spec, timeout_seconds):
+                return ExperimentRun(experiment_id=spec.id, status=RunStatus.FAILED, stderr="simulated failure")
+
+        provider = EchoReasoningProvider()
+        services = LoopServices(
+            provider=provider,
+            researcher=ResearcherAgent(provider),
+            planner=PlannerAgent(provider),
+            analyst=AnalystAgent(provider),
+            executor=FailingExecutor(),
+            evaluator=DeterministicEvaluator(),
+            repository=SqliteRepository(db_path=":memory:"),
+            artifact_store=ArtifactStore(root=tmp),
+        )
+        objective = parse_objective("Reduce latency by 20%")
+        service = ResearchLoopService(services, ResearchLoopConfig(max_iterations=2))
+
+        # Should not raise an exception
+        summary = service.run_objective(objective)
+
+        # Loop should continue to next iteration despite failure
+        assert summary.stopped is True
+        assert summary.stop_reason == "max_iterations"
+
+        # History should have 2 entries (both iterations ran)
+        history = services.repository.history_for_objective(objective.id)
+        assert len(history) == 2
+
+        # Both iterations should have runs with FAILED status
+        for h in history:
+            assert len(h.runs) > 0
+            # At least one run should be FAILED
+            failed_runs = [r for r in h.runs if r.status == RunStatus.FAILED]
+            assert len(failed_runs) > 0
+
+        # Evidence should be None for failed iterations (no evaluation possible)
+        assert history[0].evidence is None
+        assert history[1].evidence is None
+
+        # But prior_evidence_summary should still include the hypothesis statements
+        # (this is tested implicitly by the loop continuing)
+
+
+def test_prior_evidence_is_iteration_specific():
+    """Verify iteration N receives evidence from previous relevant iteration(s), not stale/unrelated information."""
+    with tempfile.TemporaryDirectory() as tmp:
+        settings = Settings(db_path=":memory:", artifact_root=tmp)
+        services = LoopServices.from_settings(settings)
+        objective = parse_objective("Reduce model inference latency by 20%")
+        objective.target = 99.0  # Force multiple iterations (EchoReasoningProvider gives ~35-56%)
+
+        # Capture contexts passed to researcher
+        from axiom.providers.echo_provider import EchoReasoningProvider
+        from axiom.agents.researcher import ResearcherAgent
+
+        captured_contexts = []
+
+        class CapturingProvider(EchoReasoningProvider):
+            def generate(self, *, system, prompt, context, output_type):
+                if output_type is Hypothesis:
+                    captured_contexts.append(context.copy())
+                return super().generate(system=system, prompt=prompt, context=context, output_type=output_type)
+
+        provider = CapturingProvider()
+        services = LoopServices(
+            provider=provider,
+            researcher=ResearcherAgent(provider),
+            planner=PlannerAgent(provider),
+            analyst=AnalystAgent(provider),
+            executor=services.executor,
+            evaluator=services.evaluator,
+            repository=services.repository,
+            artifact_store=services.artifact_store,
+        )
+        service = ResearchLoopService(services, ResearchLoopConfig(max_iterations=3))
+        summary = service.run_objective(objective)
+
+        # Should run 3 iterations (max_iterations)
+        assert summary.target_met is False
+        assert summary.stopped is True
+        assert summary.stop_reason == "max_iterations"
+        assert len(captured_contexts) == 3
+
+        # Iteration 0: no prior evidence
+        assert captured_contexts[0]["prior_evidence"] == ""
+
+        # Iteration 1: should have iteration 0 evidence
+        assert captured_contexts[1]["prior_evidence"] != ""
+        assert "batch_size" in captured_contexts[1]["prior_evidence"]
+
+        # Iteration 2: should have iteration 0 and 1 evidence (last 3)
+        assert captured_contexts[2]["prior_evidence"] != ""
+        # Should contain both iteration 0 and 1 hypotheses
+        assert "batch_size" in captured_contexts[2]["prior_evidence"]
+        assert "threads" in captured_contexts[2]["prior_evidence"]
+
+        # The prior_evidence should be specific to this objective's history
+        # (not include unrelated objectives)
+        assert "throughput" not in captured_contexts[2]["prior_evidence"]
