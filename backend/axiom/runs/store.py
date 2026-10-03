@@ -106,9 +106,18 @@ class FileRunStore(RunStore):
         valid: list[str] = []
         for path in candidates:
             try:
-                BenchmarkRun.model_validate_json(path.read_bytes())
+                payload = path.read_bytes()
+            except OSError as exc:
+                raise RunStoreError(f"Cannot read {path.name}: {exc}") from exc
+            try:
+                run = BenchmarkRun.model_validate_json(payload)
             except Exception as exc:  # noqa: BLE001 - foreign files are skipped loudly
                 logger.warning("Skipping non-run file %s: %s", path.name, exc)
+                continue
+            if run.id != path.stem:
+                logger.warning(
+                    "Skipping %s: stored id %r does not match filename", path.name, run.id
+                )
                 continue
             valid.append(path.stem)
         return sorted(valid)

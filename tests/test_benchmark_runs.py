@@ -227,3 +227,35 @@ def test_list_skips_unrelated_files():
         assert store.list_runs() == [run.id]
         with pytest.raises(RunStoreError):
             store.load("notes")
+
+
+def test_list_read_failure_raises_store_error():
+    """Unreadable candidates fail listing loudly instead of vanishing silently."""
+    with tempfile.TemporaryDirectory() as tmp:
+        store = FileRunStore(tmp)
+        run = _run()
+        store.save(run)
+        original = Path.read_bytes
+
+        def failing_read(self):
+            if self.name == f"{run.id}.json":
+                raise OSError("disk gone")
+            return original(self)
+
+        Path.read_bytes = failing_read
+        try:
+            with pytest.raises(RunStoreError):
+                store.list_runs()
+        finally:
+            Path.read_bytes = original
+
+
+def test_list_skips_id_filename_mismatch():
+    """Valid run JSON under the wrong filename never produces a misleading ID."""
+    with tempfile.TemporaryDirectory() as tmp:
+        store = FileRunStore(tmp)
+        run = _run()
+        store.save(run)
+        payload = Path(tmp, f"{run.id}.json").read_bytes()
+        Path(tmp, "brun_impostor.json").write_bytes(payload)
+        assert store.list_runs() == [run.id]
