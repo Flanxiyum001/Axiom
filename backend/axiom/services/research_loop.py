@@ -14,6 +14,7 @@ from axiom.domain.interfaces import (
     ReasoningProvider,
 )
 from axiom.domain.models import ExperimentSpec, LoopSummary, ResearchObjective, RunStatus
+from axiom.execution import ExperimentEngine
 from axiom.execution.artifacts import ArtifactStore
 from axiom.execution.evaluator import DeterministicEvaluator
 from axiom.execution.local_executor import LocalExecutor
@@ -38,6 +39,7 @@ class LoopServices:
         evaluator: ExperimentEvaluator,
         repository: MemoryRepository,
         artifact_store: ArtifactStore,
+        engine: ExperimentEngine | None = None,
     ) -> None:
         self.provider = provider
         self.researcher = researcher
@@ -47,6 +49,7 @@ class LoopServices:
         self.evaluator = evaluator
         self.repository = repository
         self.artifact_store = artifact_store
+        self.engine = engine or ExperimentEngine(executor=executor)
 
     @classmethod
     def from_settings(cls, settings: Settings) -> LoopServices:
@@ -66,15 +69,17 @@ class LoopServices:
         else:
             raise RuntimeError(f"Unsupported reasoning provider: {settings.reasoning_provider}")
         artifact_store = ArtifactStore(root=settings.artifact_root)
+        executor = LocalExecutor(artifact_store=artifact_store)
         return cls(
             provider=provider,
             researcher=ResearcherAgent(provider),
             planner=PlannerAgent(provider),
             analyst=AnalystAgent(provider),
-            executor=LocalExecutor(artifact_store=artifact_store),
+            executor=executor,
             evaluator=DeterministicEvaluator(),
             repository=SqliteRepository(db_path=settings.db_path),
             artifact_store=artifact_store,
+            engine=ExperimentEngine(executor=executor),
         )
 
 
@@ -105,28 +110,24 @@ class ResearchLoopService:
                 raise RuntimeError(f"Plan metrics {plan.metrics} missing objective metric {objective.metric}")
             self.services.repository.save_plan(plan)
             self.services.repository.save_spec(spec_candidate)
-            spec_baseline = ExperimentSpec(
-                plan_id=plan.id,
-                name=f"{hypothesis.id}-baseline",
-                description=spec_candidate.description,
-                code=spec_candidate.code,
-                parameters=spec_candidate.parameters,
-                environment={**spec_candidate.environment, "__AXIOM_LEVER_MODE__": "baseline"},
-            )
-            self.services.repository.save_spec(spec_baseline)
             timeout = min(plan.timeout_seconds, self.config.baseline_timeout_seconds)
-            baseline_run = self.services.executor.execute(spec_baseline, timeout)
-            candidate_run = self.services.executor.execute(spec_candidate, timeout)
-            self.services.repository.save_run(baseline_run)
-            self.services.repository.save_run(candidate_run)
-            run_ids = [baseline_run.id, candidate_run.id]
+            result = self.services.engine.run(plan, spec_candidate, timeout)
+            self.services.repository.save_spec(result.baseline_spec)
+            self.services.repository.save_spec(result.candidate_spec)
+            for run in result.individual_runs:
+                self.services.repository.save_run(run)
+            self.services.repository.save_run(result.baseline_run)
+            self.services.repository.save_run(result.candidate_run)
+            baseline_run = result.baseline_run
+            candidate_run = result.candidate_run
+            run_ids = [r.id for r in result.individual_runs] + [baseline_run.id, candidate_run.id]
             if baseline_run.status != RunStatus.COMPLETED or candidate_run.status != RunStatus.COMPLETED:
                 last_summary = LoopSummary(
                     iteration=iteration,
                     objective=objective,
                     hypothesis=hypothesis,
                     plan=plan,
-                    spec=spec_candidate,
+                    spec=result.candidate_spec,
                     run_ids=run_ids,
                     target_met=False,
                     stopped=False,
@@ -151,7 +152,7 @@ class ResearchLoopService:
                     objective=objective,
                     hypothesis=hypothesis,
                     plan=plan,
-                    spec=spec_candidate,
+                    spec=result.candidate_spec,
                     run_ids=run_ids,
                     evaluation=evaluation,
                     evidence=evidence,
@@ -164,7 +165,7 @@ class ResearchLoopService:
                 objective=objective,
                 hypothesis=hypothesis,
                 plan=plan,
-                spec=spec_candidate,
+                spec=result.candidate_spec,
                 run_ids=run_ids,
                 evaluation=evaluation,
                 evidence=evidence,

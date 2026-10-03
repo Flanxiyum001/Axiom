@@ -165,7 +165,7 @@ def test_research_loop_reaches_target():
         assert summary.evidence.hypothesis_supported is True
         history = services.repository.history_for_objective(objective.id)
         assert len(history) == 1
-        assert len(history[0].runs) == 2
+        assert len(history[0].runs) == 8
 
 
 def test_repository_roundtrip():
@@ -300,7 +300,7 @@ def test_service_timeout_caps_plan_timeout():
         objective = parse_objective("Reduce latency by 20%")
         service = ResearchLoopService(services, ResearchLoopConfig(max_iterations=1, baseline_timeout_seconds=5.0))
         service.run_objective(objective)
-        assert timeouts == [5.0, 5.0]
+        assert timeouts == [5.0] * 6
 
 
 def test_tighter_plan_timeout_is_honored():
