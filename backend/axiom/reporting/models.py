@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from datetime import datetime
+from typing import Any
 
 from pydantic import BaseModel, Field, model_validator
 
@@ -15,13 +16,13 @@ class CaseRecord(BaseModel):
     """One benchmark case with its paired experiment and evaluation results."""
 
     case_id: str
-    experiment: ExperimentResult
+    experiment: ExperimentResult[Any]
     evaluation: EvaluationResult
 
     @model_validator(mode="after")
     def _experiments_match(self) -> CaseRecord:
         """Reject records attributing outcomes to the wrong experiment."""
-        if self.experiment != self.evaluation.experiment:
+        if self.experiment.model_dump() != self.evaluation.experiment.model_dump():
             raise ValueError(f"Case {self.case_id!r} pairs mismatched experiments")
         return self
 
