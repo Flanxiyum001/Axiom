@@ -9,7 +9,6 @@ from __future__ import annotations
 import base64
 import json
 import logging
-import subprocess
 from typing import Any, Optional
 
 import httpx
@@ -83,10 +82,6 @@ class RealNebiusJobClient(NebiusJobClient):
     def auth_provider(self) -> NebiusAuthProvider:
         if self._auth_provider is not None:
             return self._auth_provider
-        if self.settings is not None:
-            token = getattr(self.settings, "nebius_iam_token", None)
-            if token:
-                return StaticTokenProvider(token)
         return EnvTokenProvider()
 
     @property
@@ -163,11 +158,12 @@ class RealNebiusJobClient(NebiusJobClient):
             timeout_seconds = 3600
         timeout_str = f"{int(timeout_seconds)}s"
 
+        metadata = {"name": spec.name}
+        if self._project_id:
+            metadata["parentId"] = self._project_id
+
         request_body = {
-            "metadata": {
-                "parentId": self._project_id or "",
-                "name": spec.name,
-            },
+            "metadata": metadata,
             "spec": {
                 "image": self._container_image or "nvidia/cuda:13.1.1-runtime-ubuntu24.04",
                 "platform": platform,
@@ -245,42 +241,21 @@ class RealNebiusJobClient(NebiusJobClient):
         )
 
     def get_logs(self, job_id: str) -> tuple[str, str]:
-        cmd = ["nebius", "ai", "job", "logs", job_id]
-        try:
-            result = subprocess.run(
-                cmd,
-                capture_output=True,
-                text=True,
-                timeout=self._request_timeout,
-                check=False,
-            )
-        except FileNotFoundError:
-            raise RuntimeError("Nebius CLI not found; install nebius CLI")
-        except subprocess.TimeoutExpired:
-            raise RuntimeError("Nebius CLI logs command timed out")
-
-        if result.returncode != 0:
-            raise RuntimeError(f"Nebius CLI logs failed: {result.stderr}")
-
-        stdout_lines = []
-        stderr_lines = []
-        for line in result.stdout.splitlines():
-            try:
-                entry = json.loads(line)
-                if entry.get("stream") == "stdout":
-                    stdout_lines.append(entry.get("data", ""))
-                elif entry.get("stream") == "stderr":
-                    stderr_lines.append(entry.get("data", ""))
-                else:
-                    stdout_lines.append(line)
-            except json.JSONDecodeError:
-                stdout_lines.append(line)
-
-        return ("".join(stdout_lines), "".join(stderr_lines))
+        raise NotImplementedError(
+            "Nebius job log retrieval is not implemented. "
+            "The Nebius Serverless AI Jobs REST API does not expose job logs. "
+            "Configure a supported log retrieval backend (e.g., Observability Logs API) "
+            "or implement a custom NebiusLogProvider."
+        )
 
     def get_artifacts(self, job_id: str) -> JobArtifacts:
         try:
             stdout, stderr = self.get_logs(job_id)
+        except NotImplementedError:
+            logger.warning(
+                "Log retrieval not implemented for job %s; returning empty logs", job_id
+            )
+            stdout, stderr = "", ""
         except Exception as exc:
             logger.warning("Failed to retrieve logs for job %s: %s", job_id, exc)
             stdout, stderr = "", ""
