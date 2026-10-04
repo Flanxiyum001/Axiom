@@ -26,7 +26,7 @@ from pathlib import Path
 
 from axiom.domain.interfaces import ExperimentExecutor
 from axiom.domain.models import ExperimentRun, ExperimentSpec, RunStatus
-from axiom.execution.artifacts import ArtifactStore
+from axiom.execution.artifacts import ArtifactStore, LocalArtifactStore
 from axiom.execution.metrics_protocol import parse_metrics
 from axiom.execution.resource_limits import (
     DEFAULT_MAX_ADDRESS_SPACE_MB,
