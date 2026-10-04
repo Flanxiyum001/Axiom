@@ -75,8 +75,17 @@ class LoopServices:
         if settings.executor_backend == "local":
             executor = LocalExecutor(artifact_store=artifact_store)
         elif settings.executor_backend == "nebius_gpu":
-            raise RuntimeError(
-                "Nebius GPU executor backend ('nebius_gpu') is not implemented yet"
+            from axiom.execution.nebius_cloud_job_client import RealNebiusJobClient
+            from axiom.execution.nebius_gpu_executor import NebiusGPUExecutor
+
+            job_client = RealNebiusJobClient(
+                settings=settings,
+                container_image=settings.nebius_container_image,
+                artifact_store_uri=settings.nebius_artifact_store_uri,
+            )
+            executor = NebiusGPUExecutor(
+                job_client=job_client,
+                artifact_store=artifact_store,
             )
         else:
             raise RuntimeError(f"Unsupported executor backend: {settings.executor_backend}")

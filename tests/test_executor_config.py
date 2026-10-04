@@ -36,11 +36,15 @@ def test_unsupported_executor_backend_raises():
         LoopServices.from_settings(settings)
 
 
-def test_nebius_gpu_backend_raises_not_implemented():
-    """Selecting nebius_gpu should raise a clear error explaining it is not implemented."""
+def test_nebius_gpu_backend_creates_executor():
+    """Selecting nebius_gpu should create a NebiusGPUExecutor with RealNebiusJobClient."""
+    from axiom.execution.nebius_gpu_executor import NebiusGPUExecutor
+    from axiom.execution.nebius_cloud_job_client import RealNebiusJobClient
+
     settings = Settings(executor_backend="nebius_gpu")
-    with pytest.raises(RuntimeError, match="not implemented yet"):
-        LoopServices.from_settings(settings)
+    services = LoopServices.from_settings(settings)
+    assert isinstance(services.executor, NebiusGPUExecutor)
+    assert isinstance(services.executor.job_client, RealNebiusJobClient)
 
 
 def test_loop_services_dependency_injection_still_works():
