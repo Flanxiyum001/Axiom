@@ -1,4 +1,4 @@
-"""Filesystem artifact store.
+"""Artifact store abstraction and filesystem implementation.
 
 Raw experiment outputs are immutable: artifacts are written once, content-
 addressed by SHA-256, and never overwritten. Runs reference artifacts by
@@ -10,14 +10,40 @@ from __future__ import annotations
 import hashlib
 import logging
 import shutil
+from abc import ABC, abstractmethod
 from pathlib import Path
+from typing import Any
 
 from axiom.domain.models import Artifact
 
 logger = logging.getLogger("axiom.execution")
 
 
-class ArtifactStore:
+class ArtifactStore(ABC):
+    """Abstract interface for storing and retrieving run artifacts."""
+
+    def __new__(cls, *args: Any, **kwargs: Any) -> ArtifactStore:
+        if cls is ArtifactStore:
+            return super().__new__(LocalArtifactStore)
+        return super().__new__(cls)
+
+    @abstractmethod
+    def save_output(self, run_id: str, name: str, content: bytes) -> Artifact:
+        """Persist artifact bytes for a run; returns its descriptor."""
+        raise NotImplementedError
+
+    @abstractmethod
+    def copy_into_run(self, run_id: str, source: Path) -> Artifact:
+        """Copy an existing file into a run's artifact directory."""
+        raise NotImplementedError
+
+    @abstractmethod
+    def read(self, artifact: Artifact) -> bytes:
+        """Read artifact bytes, verifying the stored SHA-256 digest."""
+        raise NotImplementedError
+
+
+class LocalArtifactStore(ArtifactStore):
     """Stores run artifacts under ``<root>/<run_id>/<name>`` with SHA-256."""
 
     def __init__(self, root: str | Path = "artifacts") -> None:
@@ -61,3 +87,4 @@ class ArtifactStore:
                 f"expected sha256={artifact.sha256}"
             )
         return data
+

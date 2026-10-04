@@ -191,9 +191,9 @@ def test_parse_metrics_rejects_nonfinite():
 
 
 def test_artifact_store_rejects_traversal():
-    from axiom.execution.artifacts import ArtifactStore
+    from axiom.execution.artifacts import LocalArtifactStore
     with tempfile.TemporaryDirectory() as tmp:
-        store = ArtifactStore(root=tmp)
+        store = LocalArtifactStore(root=tmp)
         for bad in ["../../evil.txt", "a/b.txt", "a\\b.txt", "", ".", ".."]:
             with pytest.raises(ValueError):
                 store.save_output("run1", bad, b"x")
@@ -273,7 +273,7 @@ def _services_with_recording_executor(tmp):
     from axiom.agents.researcher import ResearcherAgent
     from axiom.domain.interfaces import ExperimentExecutor
     from axiom.domain.models import ExperimentRun, RunStatus
-    from axiom.execution.artifacts import ArtifactStore
+    from axiom.execution.artifacts import LocalArtifactStore
     from axiom.execution.evaluator import DeterministicEvaluator
     timeouts = []
 
@@ -291,7 +291,7 @@ def _services_with_recording_executor(tmp):
         executor=RecordingExecutor(),
         evaluator=DeterministicEvaluator(),
         repository=SqliteRepository(db_path=":memory:"),
-        artifact_store=ArtifactStore(root=tmp),
+        artifact_store=LocalArtifactStore(root=tmp),
     )
     return services, timeouts
 
@@ -450,7 +450,7 @@ def test_failure_or_timeout_becomes_evidence():
         from axiom.agents.researcher import ResearcherAgent
         from axiom.domain.interfaces import ExperimentExecutor
         from axiom.domain.models import ExperimentRun, RunStatus
-        from axiom.execution.artifacts import ArtifactStore
+        from axiom.execution.artifacts import LocalArtifactStore
         from axiom.execution.evaluator import DeterministicEvaluator
 
         class FailingExecutor(ExperimentExecutor):
@@ -466,7 +466,7 @@ def test_failure_or_timeout_becomes_evidence():
             executor=FailingExecutor(),
             evaluator=DeterministicEvaluator(),
             repository=SqliteRepository(db_path=":memory:"),
-            artifact_store=ArtifactStore(root=tmp),
+            artifact_store=LocalArtifactStore(root=tmp),
         )
         objective = parse_objective("Reduce latency by 20%")
         service = ResearchLoopService(services, ResearchLoopConfig(max_iterations=2))

@@ -8,6 +8,7 @@ from pydantic import BaseModel, Field
 class Settings(BaseModel):
     app_name: str = "AXIOM"
     reasoning_provider: str = Field(default="echo")
+    executor_backend: str = Field(default="local")
     max_iterations: int = Field(default=5, ge=1, le=100)
     run_timeout_seconds: float = Field(default=120.0, gt=0)
     db_path: str = "axiom.db"
@@ -20,10 +21,19 @@ class Settings(BaseModel):
     nebius_request_timeout: float = 60.0
     nebius_max_retries: int = 3
 
+    # Nebius GPU executor configuration (optional)
+    nebius_gpu_instance_type: str = "gpu_k8s_a100"
+    nebius_gpu_count: int = Field(default=1, ge=1)
+    nebius_container_image: str | None = None
+    nebius_artifact_store_uri: str | None = None
+    nebius_max_wall_time_seconds: float = Field(default=3600.0, gt=0)
+
     def __init__(self, **data: object) -> None:
         env_data: dict[str, object] = {}
         if "reasoning_provider" not in data and os.environ.get("AXIOM_REASONING_PROVIDER"):
             env_data["reasoning_provider"] = os.environ["AXIOM_REASONING_PROVIDER"]
+        if "executor_backend" not in data and os.environ.get("AXIOM_EXECUTOR_BACKEND"):
+            env_data["executor_backend"] = os.environ["AXIOM_EXECUTOR_BACKEND"]
         if "max_iterations" not in data and os.environ.get("AXIOM_MAX_ITERATIONS"):
             env_data["max_iterations"] = int(os.environ["AXIOM_MAX_ITERATIONS"])
         if "run_timeout_seconds" not in data and os.environ.get("AXIOM_RUN_TIMEOUT_SECONDS"):
@@ -43,4 +53,15 @@ class Settings(BaseModel):
             env_data["nebius_request_timeout"] = float(os.environ["NEBIUS_REQUEST_TIMEOUT"])
         if "nebius_max_retries" not in data and os.environ.get("NEBIUS_MAX_RETRIES"):
             env_data["nebius_max_retries"] = int(os.environ["NEBIUS_MAX_RETRIES"])
+        if "nebius_gpu_instance_type" not in data and os.environ.get("NEBIUS_GPU_INSTANCE_TYPE"):
+            env_data["nebius_gpu_instance_type"] = os.environ["NEBIUS_GPU_INSTANCE_TYPE"]
+        if "nebius_gpu_count" not in data and os.environ.get("NEBIUS_GPU_COUNT"):
+            env_data["nebius_gpu_count"] = int(os.environ["NEBIUS_GPU_COUNT"])
+        if "nebius_container_image" not in data and os.environ.get("NEBIUS_CONTAINER_IMAGE"):
+            env_data["nebius_container_image"] = os.environ["NEBIUS_CONTAINER_IMAGE"]
+        if "nebius_artifact_store_uri" not in data and os.environ.get("NEBIUS_ARTIFACT_STORE_URI"):
+            env_data["nebius_artifact_store_uri"] = os.environ["NEBIUS_ARTIFACT_STORE_URI"]
+        if "nebius_max_wall_time_seconds" not in data and os.environ.get("NEBIUS_MAX_WALL_TIME_SECONDS"):
+            env_data["nebius_max_wall_time_seconds"] = float(os.environ["NEBIUS_MAX_WALL_TIME_SECONDS"])
         super().__init__(**{**env_data, **data})
+
