@@ -237,13 +237,16 @@ def _run_benchmark(lever, mode):
 
 
 def test_levers_behave_differently():
+    """Each lever runs distinct workloads with medians robust to load spikes."""
+    import statistics
+
     codes = {}
     improvements = {}
     for lever in ("batch_size", "threads", "precision"):
         code = EchoReasoningProvider.synthetic_benchmark_code(metric="latency_ms", lever=lever)
         codes[lever] = code
-        baseline = _run_benchmark(lever, "baseline")
-        candidate = _run_benchmark(lever, "candidate")
+        baseline = statistics.median(_run_benchmark(lever, "baseline") for _ in range(3))
+        candidate = statistics.median(_run_benchmark(lever, "candidate") for _ in range(3))
         assert candidate < baseline, lever
         improvements[lever] = (baseline - candidate) / baseline * 100.0
     assert len(set(codes.values())) == 3
