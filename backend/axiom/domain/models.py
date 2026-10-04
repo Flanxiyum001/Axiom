@@ -151,6 +151,7 @@ class ExperimentRun(BaseModel):
     stderr: str = ""
     metrics: list[MetricSample] = Field(default_factory=list)
     artifacts: list[Artifact] = Field(default_factory=list)
+    cloud_job_id: str | None = None
 
 
 class StatisticalInfo(BaseModel):
