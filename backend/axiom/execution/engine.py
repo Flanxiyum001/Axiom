@@ -15,6 +15,7 @@ from axiom.domain.models import (
     MetricSample,
     RunStatus,
 )
+from axiom.execution.validator import ExperimentValidator, ValidationResult
 
 logger = logging.getLogger("axiom.execution")
 
@@ -33,8 +34,13 @@ class ExperimentEngineResult:
 class ExperimentEngine:
     """Orchestrates baseline/candidate execution across N repetitions."""
 
-    def __init__(self, executor: ExperimentExecutor) -> None:
+    def __init__(
+        self,
+        executor: ExperimentExecutor,
+        validator: ExperimentValidator | None = None,
+    ) -> None:
         self.executor = executor
+        self.validator = validator or ExperimentValidator()
 
     def run(
         self,
@@ -65,6 +71,37 @@ class ExperimentEngine:
             parameters=dict(spec_candidate.parameters),
             environment=baseline_env,
         )
+
+        # 3. Validate BEFORE any executor call.
+        candidate_result = self.validator.validate(cand_spec)
+        baseline_result = self.validator.validate(base_spec)
+
+        if not candidate_result.valid or not baseline_result.valid:
+            reasons: list[str] = []
+            if not candidate_result.valid:
+                reasons.extend(candidate_result.reasons)
+            if not baseline_result.valid:
+                reasons.extend(baseline_result.reasons)
+            stderr = "[axiom] validation rejected: " + "; ".join(reasons)
+
+            failed_run = ExperimentRun(
+                experiment_id=cand_spec.id,
+                status=RunStatus.FAILED,
+                stderr=stderr,
+                completed_at=datetime.now(UTC),
+            )
+            return ExperimentEngineResult(
+                baseline_spec=base_spec,
+                candidate_spec=cand_spec,
+                baseline_run=ExperimentRun(
+                    experiment_id=base_spec.id,
+                    status=RunStatus.FAILED,
+                    stderr=stderr,
+                    completed_at=datetime.now(UTC),
+                ),
+                candidate_run=failed_run,
+                individual_runs=[],
+            )
 
         repetitions = max(1, plan.repetitions)
 

@@ -14,7 +14,7 @@ from axiom.domain.interfaces import (
     ReasoningProvider,
 )
 from axiom.domain.models import ExperimentSpec, LoopSummary, ResearchObjective, RunStatus
-from axiom.execution import ExperimentEngine
+from axiom.execution import ExperimentEngine, ExperimentValidator
 from axiom.execution.artifacts import ArtifactStore
 from axiom.execution.evaluator import DeterministicEvaluator
 from axiom.execution.local_executor import LocalExecutor
@@ -79,7 +79,7 @@ class LoopServices:
             evaluator=DeterministicEvaluator(),
             repository=SqliteRepository(db_path=settings.db_path),
             artifact_store=artifact_store,
-            engine=ExperimentEngine(executor=executor),
+            engine=ExperimentEngine(executor=executor, validator=ExperimentValidator()),
         )
 
 
