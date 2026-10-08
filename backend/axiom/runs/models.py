@@ -27,6 +27,7 @@ class ExecutionConfig(BaseModel):
 
     dataset: str
     dataset_description: str = ""
+    dataset_version: str = ""
     case_ids: list[str] = Field(default_factory=list)
     label: str = ""
     system: str = ""
