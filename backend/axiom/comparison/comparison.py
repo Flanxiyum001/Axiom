@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import math
+
 from axiom.domain.models import Direction, utcnow
 from axiom.comparison.models import (
     CaseComparison,
@@ -28,6 +30,8 @@ KNOWN_DIRECTIONS: dict[str, Direction] = {
 
 METADATA_FIELDS = (
     "dataset_version",
+    "dataset_description",
+    "case_ids",
     "label",
     "system",
     "output_schema",
@@ -40,11 +44,22 @@ METADATA_FIELDS = (
     "temperature",
     "top_p",
     "max_tokens",
+    "extra",
 )
 
 
 class IncompatibleRunsError(ValueError):
     """Raised when two runs cannot be meaningfully compared."""
+
+
+def _finite_or_none(value: float | None) -> float | None:
+    """Return value only if it is a finite number, else None."""
+    if value is None:
+        return None
+    try:
+        return value if math.isfinite(value) else None
+    except TypeError:
+        return None
 
 
 def compare_metric(
@@ -54,23 +69,30 @@ def compare_metric(
     direction: Direction | None,
 ) -> MetricDelta:
     """Diff two measurements with direction-aware verdict and safe percent."""
+    finite_a = _finite_or_none(value_a)
+    finite_b = _finite_or_none(value_b)
     delta: float | None = None
     percent: float | None = None
     verdict = MetricVerdict.UNKNOWN
-    if value_a is not None and value_b is not None:
-        delta = value_b - value_a
-        if value_a != 0:
-            percent = delta / abs(value_a) * 100.0
-        if delta == 0:
-            verdict = MetricVerdict.UNCHANGED
-        elif direction is not None:
-            better = delta > 0
-            wants_up = direction == Direction.MAXIMIZE
-            verdict = MetricVerdict.IMPROVED if better == wants_up else MetricVerdict.REGRESSED
+    if finite_a is not None and finite_b is not None:
+        raw_delta = finite_b - finite_a
+        if math.isfinite(raw_delta):
+            delta = raw_delta
+            if finite_a != 0:
+                raw_percent = delta / abs(finite_a) * 100.0
+                if math.isfinite(raw_percent):
+                    percent = raw_percent
+            if delta == 0:
+                if direction is not None:
+                    verdict = MetricVerdict.UNCHANGED
+            elif direction is not None:
+                better = delta > 0
+                wants_up = direction == Direction.MAXIMIZE
+                verdict = MetricVerdict.IMPROVED if better == wants_up else MetricVerdict.REGRESSED
     return MetricDelta(
         metric=metric,
-        value_a=value_a,
-        value_b=value_b,
+        value_a=finite_a,
+        value_b=finite_b,
         delta=delta,
         percent=percent,
         direction=direction,
@@ -153,7 +175,6 @@ def _compare_aggregates(
     means_b = _means_by_evaluator(run_b)
     if run_a.report is None or run_b.report is None:
         warnings.append("Aggregate comparison skipped: a run has no stored report")
-        return []
     deltas = []
     for metric in list(means_a) + [name for name in means_b if name not in means_a]:
         direction = known.get(metric)
@@ -177,6 +198,12 @@ def _compare_cases(
     warnings: list[str],
 ) -> tuple[list[CaseComparison], list[str], list[str]]:
     """Match records by stable case ID and diff shared cases metric by metric."""
+    ids_a = [record.case_id for record in run_a.records]
+    ids_b = [record.case_id for record in run_b.records]
+    dup_a = sorted({case_id for case_id in ids_a if ids_a.count(case_id) > 1})
+    dup_b = sorted({case_id for case_id in ids_b if ids_b.count(case_id) > 1})
+    if dup_a or dup_b:
+        raise IncompatibleRunsError(f"Duplicate case_id values cannot be compared: {dup_a + dup_b!r}")
     records_a = {record.case_id: record for record in run_a.records}
     records_b = {record.case_id: record for record in run_b.records}
     missing_in_b = [case_id for case_id in records_a if case_id not in records_b]
@@ -190,6 +217,10 @@ def _compare_cases(
         scores_b = _outcomes_by_name(records_b[case_id])
         metrics = []
         for metric in list(scores_a) + [name for name in scores_b if name not in scores_a]:
+            if metric not in scores_a:
+                warnings.append(f"Case {case_id!r}: metric {metric!r} missing from run A")
+            elif metric not in scores_b:
+                warnings.append(f"Case {case_id!r}: metric {metric!r} missing from run B")
             metrics.append(
                 compare_metric(metric, scores_a.get(metric), scores_b.get(metric), known.get(metric))
             )

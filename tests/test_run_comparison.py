@@ -209,3 +209,85 @@ def test_comparison_leaves_inputs_untouched():
     compare_runs(first, second)
     assert first.model_dump_json() == before_a
     assert second.model_dump_json() == before_b
+
+
+def test_metadata_includes_description_case_ids_extra():
+    """Execution-config differences in description, case IDs, and extra are shown."""
+    first = _run(
+        config={"dataset_description": "desc-a", "case_ids": ["c1"], "extra": {"k": "a"}},
+        cases=[_record("c1", [("score", 1.0)])],
+    )
+    second = _run(
+        config={"dataset_description": "desc-b", "case_ids": ["c1", "c2"], "extra": {"k": "b"}},
+        cases=[_record("c1", [("score", 1.0)])],
+    )
+    by_field = {item.field: item for item in compare_runs(first, second).metadata_differences}
+    assert by_field["dataset_description"].value_a == "desc-a"
+    assert by_field["dataset_description"].value_b == "desc-b"
+    assert by_field["case_ids"].value_a == ["c1"]
+    assert by_field["extra"].value_a == {"k": "a"}
+
+
+def test_unknown_direction_equal_stays_unknown():
+    """Equal values without a known direction never claim unchanged."""
+    delta = compare_metric("mystery", 5.0, 5.0, None)
+    assert delta.delta == 0.0
+    assert delta.verdict == MetricVerdict.UNKNOWN
+
+
+def test_nonfinite_measurements_normalized():
+    """NaN and infinite inputs become unknown without directional verdicts."""
+    for bad in (float("nan"), float("inf"), float("-inf")):
+        left = compare_metric("accuracy", bad, 1.0, Direction.MAXIMIZE)
+        assert left.value_a is None
+        assert left.delta is None
+        assert left.percent is None
+        assert left.verdict == MetricVerdict.UNKNOWN
+        right = compare_metric("accuracy", 1.0, bad, Direction.MAXIMIZE)
+        assert right.value_b is None
+        assert right.verdict == MetricVerdict.UNKNOWN
+    both = compare_metric("accuracy", float("inf"), float("inf"), Direction.MAXIMIZE)
+    assert both.verdict == MetricVerdict.UNKNOWN
+
+
+def test_missing_report_emits_one_sided_deltas():
+    """A missing report still yields one-sided metrics with a warning."""
+    first = _run(cases=[_record("c1", [("accuracy", 0.8)])])
+    second = BenchmarkRun(config=ExecutionConfig(dataset="bench"), records=[], report=None)
+    comparison = compare_runs(first, second)
+    assert any("no stored report" in warning for warning in comparison.warnings)
+    by_metric = {metric.metric: metric for metric in comparison.metrics}
+    assert by_metric["accuracy"].value_a == 0.8
+    assert by_metric["accuracy"].value_b is None
+    assert by_metric["accuracy"].verdict == MetricVerdict.UNKNOWN
+
+
+def test_duplicate_case_ids_rejected():
+    """Runs with duplicate case IDs refuse comparison instead of dropping records."""
+    first = BenchmarkRun(
+        config=ExecutionConfig(dataset="bench"),
+        records=[_record("c1", [("score", 1.0)]), _record("c1", [("score", 0.0)])],
+        report=None,
+    )
+    second = _run(cases=[_record("c1", [("score", 1.0)])])
+    try:
+        compare_runs(first, second)
+    except IncompatibleRunsError as exc:
+        assert "c1" in str(exc)
+        return
+    raise AssertionError("expected IncompatibleRunsError")
+
+
+def test_case_missing_metrics_warn_per_side():
+    """Shared-case gaps warn whether the metric is absent from run A or B."""
+    first = _run(cases=[_record("c1", [("accuracy", 0.8), ("only_a", 1.0)])])
+    second = _run(cases=[_record("c1", [("accuracy", 0.9), ("only_b", 1.0)])])
+    comparison = compare_runs(first, second)
+    assert any(
+        "'c1'" in warning and "'only_a'" in warning and "run B" in warning
+        for warning in comparison.warnings
+    )
+    assert any(
+        "'c1'" in warning and "'only_b'" in warning and "run A" in warning
+        for warning in comparison.warnings
+    )
