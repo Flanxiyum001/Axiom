@@ -77,8 +77,8 @@ def _evaluate_delta(delta: MetricDelta, config: RegressionConfig) -> MetricRegre
     has_thresholds = (
         thresholds.warn_abs is not None
         or thresholds.fail_abs is not None
-        or thresholds.warn_pct is not None
-        or thresholds.fail_pct is not None
+        or (pct is not None and thresholds.warn_pct is not None)
+        or (pct is not None and thresholds.fail_pct is not None)
     )
     if has_thresholds:
         return MetricRegression(

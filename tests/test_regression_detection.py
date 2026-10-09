@@ -192,6 +192,31 @@ def test_zero_baseline_safe():
     assert report.status in (RegressionStatus.WARNING, RegressionStatus.FAIL)
 
 
+def test_zero_baseline_percentage_only_warns():
+    """Zero baselines have no percent, so pct-only thresholds cannot pass a regression."""
+    baseline = _run(cases=[_record("c1", [("latency_ms", 0.0)])])
+    candidate = _run(cases=[_record("c1", [("latency_ms", 50.0)])])
+    report = detect_regressions(baseline, candidate, _pct_config(2.0, 5.0))
+    assert report.metrics[0].percent is None
+    assert report.status == RegressionStatus.WARNING
+
+
+def test_negative_thresholds_rejected():
+    """Negative thresholds are invalid and rejected before evaluation."""
+    for bad in (
+        MetricThresholds,
+        RegressionConfig,
+    ):
+        try:
+            if bad is MetricThresholds:
+                bad(warn_abs=-1.0)
+            else:
+                bad(default_fail_abs=-1.0)
+        except ValueError:
+            continue
+        raise AssertionError(f"expected ValueError for {bad.__name__}")
+
+
 def test_detection_leaves_inputs_untouched():
     """Detection never mutates runs or the comparison result."""
     baseline = _run(cases=[_record("c1", [("accuracy", 0.9)])])

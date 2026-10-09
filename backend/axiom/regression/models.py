@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import datetime
 from enum import Enum
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 from axiom.domain.models import Direction, utcnow
 
@@ -26,6 +26,14 @@ class MetricThresholds(BaseModel):
     warn_pct: float | None = None
     fail_pct: float | None = None
 
+    @field_validator("warn_abs", "fail_abs", "warn_pct", "fail_pct")
+    @classmethod
+    def _non_negative(cls, value: float | None) -> float | None:
+        """Reject negative thresholds; they would trigger on every regression."""
+        if value is not None and value < 0:
+            raise ValueError("Regression thresholds must be non-negative")
+        return value
+
 
 class RegressionConfig(BaseModel):
     """Threshold configuration with defaults plus per-metric overrides."""
@@ -35,6 +43,16 @@ class RegressionConfig(BaseModel):
     default_warn_pct: float | None = None
     default_fail_pct: float | None = None
     per_metric: dict[str, MetricThresholds] = Field(default_factory=dict)
+
+    @field_validator(
+        "default_warn_abs", "default_fail_abs", "default_warn_pct", "default_fail_pct"
+    )
+    @classmethod
+    def _non_negative(cls, value: float | None) -> float | None:
+        """Reject negative default thresholds before they reach evaluation."""
+        if value is not None and value < 0:
+            raise ValueError("Regression thresholds must be non-negative")
+        return value
 
     def thresholds_for(self, metric: str) -> MetricThresholds:
         """Merge defaults with any per-metric override for one metric."""
