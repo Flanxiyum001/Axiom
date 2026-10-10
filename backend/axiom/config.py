@@ -20,6 +20,12 @@ class Settings(BaseModel):
     nebius_request_timeout: float = 60.0
     nebius_max_retries: int = 3
 
+    # Nebius S3 configuration (optional)
+    nebius_s3_access_key_id: str | None = None
+    nebius_s3_secret_access_key: str | None = None
+    nebius_s3_region: str = "us-east-1"
+    nebius_s3_endpoint_url: str = "https://storage.nebius.com"
+
     def __init__(self, **data: object) -> None:
         env_data: dict[str, object] = {}
         if "reasoning_provider" not in data and os.environ.get("AXIOM_REASONING_PROVIDER"):
@@ -43,4 +49,13 @@ class Settings(BaseModel):
             env_data["nebius_request_timeout"] = float(os.environ["NEBIUS_REQUEST_TIMEOUT"])
         if "nebius_max_retries" not in data and os.environ.get("NEBIUS_MAX_RETRIES"):
             env_data["nebius_max_retries"] = int(os.environ["NEBIUS_MAX_RETRIES"])
+        # Nebius S3 env vars
+        if "nebius_s3_access_key_id" not in data and os.environ.get("NEBIUS_S3_ACCESS_KEY_ID"):
+            env_data["nebius_s3_access_key_id"] = os.environ["NEBIUS_S3_ACCESS_KEY_ID"]
+        if "nebius_s3_secret_access_key" not in data and os.environ.get("NEBIUS_S3_SECRET_ACCESS_KEY"):
+            env_data["nebius_s3_secret_access_key"] = os.environ["NEBIUS_S3_SECRET_ACCESS_KEY"]
+        if "nebius_s3_region" not in data and os.environ.get("NEBIUS_S3_REGION"):
+            env_data["nebius_s3_region"] = os.environ["NEBIUS_S3_REGION"]
+        if "nebius_s3_endpoint_url" not in data and os.environ.get("NEBIUS_S3_ENDPOINT_URL"):
+            env_data["nebius_s3_endpoint_url"] = os.environ["NEBIUS_S3_ENDPOINT_URL"]
         super().__init__(**{**env_data, **data})

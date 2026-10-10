@@ -90,24 +90,36 @@ def _uri_encode_component(component: str) -> str:
     A-Z, a-z, 0-9, '-', '.', '_', '~'
     Space must be encoded as %20 (not +).
     """
-    # AWS SigV4 encoding: encode everything except unreserved chars
-    # unreserved = ALPHA / DIGIT / "-" / "." / "_" / "~"
     safe_chars = "-_.~"
     return urllib.parse.quote(component, safe=safe_chars)
 
 
-def _uri_encode_path(path: str) -> str:
-    """URI encode a full path per AWS SigV4 rules.
+def _build_request_path(bucket: str, key: str) -> str:
+    """Build the un-encoded or segment-encoded path string for request/canonical URI.
 
-    Encodes each path segment individually, preserving '/' separators.
-    This ensures the canonical URI matches the actual request URI.
+    Both canonical URI and actual HTTP request URI must be constructed using
+    the exact same encoding rules to guarantee SigV4 signature matching.
+
+    Bucket name is encoded as a path component.
+    Object key segments are encoded individually, preserving '/' separators.
+    """
+    encoded_bucket = _uri_encode_component(bucket)
+    # Strip leading slashes from key to prevent double slashes in path
+    clean_key = key.lstrip("/")
+    key_segments = clean_key.split("/")
+    encoded_key = "/".join(_uri_encode_component(seg) for seg in key_segments)
+    return f"/{encoded_bucket}/{encoded_key}"
+
+
+def _build_canonical_uri(path: str) -> str:
+    """Return the canonical URI for SigV4 signing.
+
+    The path argument must already be normalized / uri-encoded via _build_request_path.
+    This helper enforces that canonical URI and HTTP request path share the identical URI.
     """
     if not path:
-        return ""
-    # Split by '/', encode each segment, then rejoin
-    segments = path.split("/")
-    encoded_segments = [_uri_encode_component(seg) for seg in segments]
-    return "/".join(encoded_segments)
+        return "/"
+    return path
 
 
 def _canonical_request(
@@ -119,9 +131,7 @@ def _canonical_request(
     payload_hash: str,
 ) -> str:
     """Construct the canonical request per AWS SigV4 spec."""
-    # Canonical URI: absolute path, URI-encoded per RFC 3986
-    # Encode each path segment individually to preserve '/' separators
-    canonical_uri = _uri_encode_path(path)
+    canonical_uri = _build_canonical_uri(path)
 
     # Canonical Query String: sorted by key, URI-encoded
     if query_params:
@@ -228,19 +238,19 @@ class NebiusStorageClient:
         self._access_key_id = (
             access_key_id
             or os.environ.get("NEBIUS_S3_ACCESS_KEY_ID")
-            or (settings.nebius_s3_access_key_id if settings else None)
+            or (getattr(settings, "nebius_s3_access_key_id", None) if settings else None)
         )
         self._secret_access_key = (
             secret_access_key
             or os.environ.get("NEBIUS_S3_SECRET_ACCESS_KEY")
-            or (settings.nebius_s3_secret_access_key if settings else None)
+            or (getattr(settings, "nebius_s3_secret_access_key", None) if settings else None)
         )
 
         # Resolve endpoint URL
         self._endpoint_url = (
             endpoint_url
             or os.environ.get("NEBIUS_S3_ENDPOINT_URL")
-            or (settings.nebius_s3_endpoint_url if settings else None)
+            or (getattr(settings, "nebius_s3_endpoint_url", None) if settings else None)
             or "https://storage.nebius.com"
         ).rstrip("/")
 
@@ -305,14 +315,10 @@ class NebiusStorageClient:
         if not bucket or not key:
             raise NebiusStorageConfigError("Bucket and key must be non-empty.")
 
-        # Build request URL using path-style addressing for compatibility
+        # Build request URL path using shared path builder
         # Path-style: https://endpoint/bucket/key
-        # Encode bucket and key components separately to preserve '/' separators
-        encoded_bucket = _uri_encode_component(bucket)
-        encoded_path = _uri_encode_path(f"/{bucket}/{key}")
-        # Remove leading slash for URL construction
-        url_path = encoded_path.lstrip("/")
-        url = f"{self._endpoint_url}/{url_path}"
+        request_path = _build_request_path(bucket, key)
+        url = f"{self._endpoint_url}{request_path}"
 
         # Prepare request components for signing
         now = datetime.now(timezone.utc)
@@ -330,10 +336,10 @@ class NebiusStorageClient:
         # Empty payload for GET
         payload_hash = "UNSIGNED-PAYLOAD"
 
-        # Build canonical request
+        # Build canonical request using exact same request_path
         canonical_req = _canonical_request(
             method="GET",
-            path=f"/{bucket}/{key}",
+            path=request_path,
             query_params={},
             headers=headers_to_sign,
             signed_headers=signed_headers,

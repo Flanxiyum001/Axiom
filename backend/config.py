@@ -61,6 +61,28 @@ class Settings(BaseSettings):
         description="Seed for mock LLM provider determinism",
     )
 
+    # Nebius S3 configuration (optional)
+    nebius_s3_access_key_id: Optional[str] = Field(
+        default=None,
+        alias="NEBIUS_S3_ACCESS_KEY_ID",
+        description="Nebius S3 access key ID",
+    )
+    nebius_s3_secret_access_key: Optional[str] = Field(
+        default=None,
+        alias="NEBIUS_S3_SECRET_ACCESS_KEY",
+        description="Nebius S3 secret access key",
+    )
+    nebius_s3_region: str = Field(
+        default="us-east-1",
+        alias="NEBIUS_S3_REGION",
+        description="Nebius S3 region",
+    )
+    nebius_s3_endpoint_url: str = Field(
+        default="https://storage.nebius.com",
+        alias="NEBIUS_S3_ENDPOINT_URL",
+        description="Nebius S3 endpoint URL",
+    )
+
     model_config = ConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",
