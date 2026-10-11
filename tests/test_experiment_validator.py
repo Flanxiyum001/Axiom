@@ -234,3 +234,18 @@ def test_validator_rejects_os_exec_and_spawn_calls():
         spec.code = f"import os\nos.{method}('echo')"
         result = validator.validate(spec)
         assert not result.valid, method
+
+
+
+def test_validator_rejects_alias_inside_function_defined_before_import():
+    validator = ExperimentValidator()
+    spec = create_valid_spec()
+    spec.code = (
+        "def launch():\n"
+        "    ops.system('echo hi')\n"
+        "import os as ops\n"
+        "launch()"
+    )
+    result = validator.validate(spec)
+    assert not result.valid
+    assert any("os.system" in reason for reason in result.reasons)
