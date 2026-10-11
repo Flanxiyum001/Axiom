@@ -18,7 +18,7 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import TYPE_CHECKING, Optional
 
-import httpx2 as httpx
+import httpx
 
 if TYPE_CHECKING:
     from axiom.config import Settings
