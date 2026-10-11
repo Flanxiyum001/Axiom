@@ -107,11 +107,31 @@ def _scan_dangerous_calls(tree: ast.AST) -> list[str]:
     executor.
     """
     findings: list[str] = []
+    # Collect aliases in a first pass so calls inside functions defined before
+    # their imports are checked against the same module-level aliases.
+    module_aliases: dict[str, str] = {}
+    callable_aliases: dict[str, str] = {}
+    for imported_node in ast.walk(tree):
+        if isinstance(imported_node, ast.Import):
+            for alias in imported_node.names:
+                root_module = alias.name.split(".", 1)[0]
+                module_aliases[alias.asname or root_module] = root_module
+        elif isinstance(imported_node, ast.ImportFrom):
+            root_module = (imported_node.module or "").split(".", 1)[0]
+            if root_module in {"os", _BUILTINS_MODULE}:
+                for alias in imported_node.names:
+                    if alias.name == "*":
+                        continue
+                    local_name = alias.asname or alias.name
+                    if root_module == "os" and _is_dangerous_os_attr(alias.name):
+                        callable_aliases[local_name] = f"os.{alias.name}"
+                    elif root_module == _BUILTINS_MODULE and alias.name in _DANGEROUS_BUILTINS:
+                        callable_aliases[local_name] = f"{_BUILTINS_MODULE}.{alias.name}"
 
     class _Visitor(ast.NodeVisitor):
         def __init__(self) -> None:
-            self.module_aliases: dict[str, str] = {}
-            self.callable_aliases: dict[str, str] = {}
+            self.module_aliases: dict[str, str] = dict(module_aliases)
+            self.callable_aliases: dict[str, str] = dict(callable_aliases)
 
         def visit_Import(self, node: ast.Import) -> None:
             for alias in node.names:
