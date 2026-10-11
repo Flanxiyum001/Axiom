@@ -41,3 +41,10 @@ that compares then evaluates in one call.
 - Overall status is deterministic: any FAIL → FAIL, else any WARNING →
   WARNING, else PASS.
 - Inputs are never mutated; the report is a new object.
+
+
+## Missing or unknown measurements
+
+Missing metrics, unknown metric directions, and absent stored reports are
+reported as **WARNING**, not PASS. Regression detection cannot establish that
+a candidate is safe when the available evidence is insufficient.
