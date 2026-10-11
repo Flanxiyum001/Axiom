@@ -82,6 +82,11 @@ class Settings(BaseSettings):
         alias="NEBIUS_S3_ENDPOINT_URL",
         description="Nebius S3 endpoint URL",
     )
+    nebius_s3_bucket_name: str | None = Field(
+        default=None,
+        alias="NEBIUS_S3_BUCKET_NAME",
+        description="Nebius S3 bucket name for artifact storage",
+    )
 
     model_config = ConfigDict(
         env_file=".env",

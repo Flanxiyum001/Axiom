@@ -25,6 +25,7 @@ class Settings(BaseModel):
     nebius_s3_secret_access_key: str | None = None
     nebius_s3_region: str = "us-east-1"
     nebius_s3_endpoint_url: str = "https://storage.nebius.com"
+    nebius_s3_bucket_name: str | None = None
 
     def __init__(self, **data: object) -> None:
         env_data: dict[str, object] = {}
