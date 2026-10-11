@@ -42,10 +42,10 @@ class RealNebiusJobClient:
     def get_artifact_bytes(self, job_id: str, artifact_name: str) -> bytes:
         """Download an artifact from Nebius Storage by job ID and artifact name.
 
-        The object key is the artifact name directly (e.g. ``metrics.json``).
-        When a bucket is mounted at ``containerPath: /output``, the artifact name
-        maps 1:1 to the S3 object key. This avoids requiring the job ID inside
-        the container, which Nebius AI Cloud does not pass automatically.
+        The current implementation uses the artifact name directly as the object
+        key (e.g. ``metrics.json``) and does not include ``job_id`` in the key.
+        The assumed mapping between a container output path and an S3 object key
+        has not been verified against a live Nebius AI Cloud job.
         """
         bucket = self._settings.nebius_s3_bucket_name
         if not bucket:
@@ -63,9 +63,7 @@ class RealNebiusJobClient:
 
     def parse_and_populate_metrics(self, run: ExperimentRun, stdout: str) -> ExperimentRun:
         """Parse metrics from stdout and populate the ExperimentRun."""
-        samples = parse_metrics(stdout)
-        if samples:
-            run.metrics = samples
+        run.metrics = parse_metrics(stdout)
         return run
 
 
@@ -82,27 +80,27 @@ def integrate_nebius_artifact_retrieval(
     3. Parses it using the existing AXIOM metrics protocol
     4. Populates ExperimentRun.metrics
 
-    If no bucket is configured, the run is returned unchanged (LocalExecutor behavior preserved).
-    If the artifact is missing or malformed, the run status is preserved and an error is logged.
+    If storage credentials or the bucket are not configured, the run is returned unchanged.
+    Missing/inaccessible artifacts or artifacts containing no valid metrics fail the run.
 
     Args:
         run: The ExperimentRun to update with metrics
-        job_id: The Nebius job ID used to construct the object key
+        job_id: Remote job identifier retained for interface compatibility; the current
+            object-key convention does not include a job-specific prefix.
         client: Optional RealNebiusJobClient instance (creates one from settings if not provided)
 
     Returns:
         The updated ExperimentRun with metrics populated if successful
     """
-    if client is None:
-        client = RealNebiusJobClient()
-
-    # If no bucket is configured, preserve existing LocalExecutor behavior
     try:
-        # Download the metrics artifact from Nebius Storage
+        # Construct lazily so missing S3 credentials are handled by the same
+        # safe fallback path as a missing bucket, rather than escaping early.
+        if client is None:
+            client = RealNebiusJobClient()
         metrics_content = client.get_artifact_bytes(job_id, "metrics.json")
     except NebiusStorageConfigError:
         # No bucket configured - preserve existing behavior
-        logger.info("No Nebius S3 bucket configured; preserving LocalExecutor behavior")
+        logger.info("Nebius Storage is not configured; leaving run unchanged")
         return run
     except NebiusStorageNotFoundError as e:
         logger.warning("Metrics artifact not found in Nebius Storage: %s", e)
@@ -137,7 +135,14 @@ def integrate_nebius_artifact_retrieval(
     except Exception as e:
         logger.warning("Failed to parse metrics from artifact: %s", e)
         run.status = RunStatus.FAILED
+        run.exit_code = -1
         run.stderr = f"Metrics parsing error: {e}"
+        return run
+
+    if not run.metrics:
+        run.status = RunStatus.FAILED
+        run.exit_code = -1
+        run.stderr = "Metrics artifact contained no valid metric samples"
         return run
 
     # Preserve cloud_job_id, status, exit code, and existing error behavior
