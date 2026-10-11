@@ -28,6 +28,12 @@ def test_real_nebius_job_client_init():
     assert client._settings.nebius_s3_bucket_name == "my-bucket"
 
 
+def test_settings_reads_s3_bucket_name_from_environment(monkeypatch):
+    monkeypatch.setenv("NEBIUS_S3_BUCKET_NAME", "env-bucket")
+    settings = Settings()
+    assert settings.nebius_s3_bucket_name == "env-bucket"
+
+
 def test_get_artifact_bytes_missing_bucket():
     """Test error raised when bucket is not configured."""
     settings = Settings(
@@ -132,3 +138,35 @@ def test_integrate_nebius_artifact_retrieval_storage_error():
 
     assert result_run.status == RunStatus.FAILED
     assert "Storage error" in result_run.stderr
+
+
+
+def test_integrate_handles_missing_s3_credentials_without_raising(monkeypatch):
+    monkeypatch.delenv("NEBIUS_S3_ACCESS_KEY_ID", raising=False)
+    monkeypatch.delenv("NEBIUS_S3_SECRET_ACCESS_KEY", raising=False)
+    monkeypatch.delenv("NEBIUS_S3_BUCKET_NAME", raising=False)
+    run = ExperimentRun(experiment_id="exp-1", status=RunStatus.COMPLETED)
+
+    result_run = integrate_nebius_artifact_retrieval(run, "job-123")
+
+    assert result_run is run
+    assert result_run.status == RunStatus.COMPLETED
+
+
+def test_integrate_marks_empty_metrics_artifact_failed():
+    run = ExperimentRun(experiment_id="exp-1", status=RunStatus.COMPLETED)
+    client = MagicMock(spec=RealNebiusJobClient)
+    client.get_artifact_bytes.return_value = b'{"metrics": []}'
+    client.persist_artifact.return_value = MagicMock(path="/tmp/metrics.json")
+
+    def return_no_metrics(run_obj, content):
+        run_obj.metrics = []
+        return run_obj
+
+    client.parse_and_populate_metrics.side_effect = return_no_metrics
+
+    result_run = integrate_nebius_artifact_retrieval(run, "job-123", client=client)
+
+    assert result_run.status == RunStatus.FAILED
+    assert result_run.exit_code == -1
+    assert "no valid metric samples" in result_run.stderr
