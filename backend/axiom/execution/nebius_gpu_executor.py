@@ -77,7 +77,7 @@ def integrate_nebius_artifact_retrieval(
     """Integrate Nebius Storage artifact retrieval after job completion.
 
     After a Nebius GPU job completes, this function:
-    1. Downloads the metrics artifact from Nebius Object Storage using the deterministic key: jobs/{job_id}/metrics.json
+    1. Downloads the metrics artifact from Nebius Object Storage using the deterministic key: {artifact_name}
     2. Persists the downloaded file using the existing ArtifactStore
     3. Parses it using the existing AXIOM metrics protocol
     4. Populates ExperimentRun.metrics

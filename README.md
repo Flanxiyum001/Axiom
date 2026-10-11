@@ -75,9 +75,9 @@ AXIOM supports three distinct execution modes:
   3. Set `AXIOM_LLM_PROVIDER=nebius`.
 - **Safety**: Scripts check for required env vars and exit gracefully with a clear message if they are missing. No API keys are printed.
 
-### C. Future Nebius AI Cloud GPU Experiment Execution
+### C. Nebius AI Cloud GPU Experiment Execution
 - **Goal**: Run actual GPU‑accelerated experiments on Nebius AI Cloud.
-- **Status**: Not yet implemented. The current codebase only runs mock experiment code; real GPU execution will be added in a future release.
+- **Status**: Implemented via `RealNebiusJobClient` in `backend/axiom/execution/nebius_gpu_executor.py`. Real GPU execution is available on the `feat/nemotron-planner-integration` branch.
 
 ## Model ID
 
