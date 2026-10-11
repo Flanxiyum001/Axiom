@@ -25,8 +25,9 @@ that compares then evaluates in one call.
   level. Failure is checked before warning.
 - Zero baselines yield no percent (comparison layer); only absolute
   thresholds apply there. No division path exists.
-- Only `REGRESSED` verdicts (direction-aware, from the comparison layer)
-  can warn or fail. Improved, unchanged, and unknown deltas are PASS.
+- Only `REGRESSED` verdicts can trigger threshold-based warnings/failures.
+  Improved and unchanged deltas are PASS; unknown deltas are WARNING because
+  their direction or measurement is insufficient to establish a safe result.
 - A regressed metric with configured thresholds below both levels is PASS
   (sub-threshold, tolerated). A regressed metric with no thresholds at
   all is WARNING (conservative default).
@@ -37,7 +38,8 @@ that compares then evaluates in one call.
   worst of its metrics.
 - Baseline-only cases are WARNING (missing from candidate); candidate-only
   cases are PASS (informational). Both appear in the missing lists.
-- Missing metrics (unknown deltas) are PASS with a reason and never fail.
+- Missing metrics, unknown directions, and absent stored reports are WARNING;
+  they are not silently classified as PASS.
 - Overall status is deterministic: any FAIL → FAIL, else any WARNING →
   WARNING, else PASS.
 - Inputs are never mutated; the report is a new object.
