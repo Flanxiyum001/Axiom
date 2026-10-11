@@ -59,4 +59,6 @@ class Settings(BaseModel):
             env_data["nebius_s3_region"] = os.environ["NEBIUS_S3_REGION"]
         if "nebius_s3_endpoint_url" not in data and os.environ.get("NEBIUS_S3_ENDPOINT_URL"):
             env_data["nebius_s3_endpoint_url"] = os.environ["NEBIUS_S3_ENDPOINT_URL"]
+        if "nebius_s3_bucket_name" not in data and os.environ.get("NEBIUS_S3_BUCKET_NAME"):
+            env_data["nebius_s3_bucket_name"] = os.environ["NEBIUS_S3_BUCKET_NAME"]
         super().__init__(**{**env_data, **data})
