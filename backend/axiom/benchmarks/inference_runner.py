@@ -148,11 +148,10 @@ def _prompt_for(case: BenchmarkCase, variant: str) -> str:
         )
     if variant == "candidate":
         return (
-            "Solve the task carefully and verify any arithmetic before answering. "
-            "Keep the answer concise; do not show a derivation.\n"
+            "Answer accurately and concisely. Check calculations silently.\n"
             f"Task: {case.input}\n"
-            'Return exactly one JSON object with keys "answer" (a string) and '
-            '"confidence" (a number from 0 to 1). No text outside JSON.'
+            'Return one JSON object with keys "answer" (string) and '
+            '"confidence" (number from 0 to 1). No extra text.'
         )
     raise ValueError(f"Unknown prompt variant: {variant!r}")
 
