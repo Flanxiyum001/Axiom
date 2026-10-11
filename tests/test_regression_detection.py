@@ -268,3 +268,28 @@ def test_accepts_existing_comparison_result():
     assert report.baseline_run_id == baseline.id
     assert report.candidate_run_id == candidate.id
     assert report.status == RegressionStatus.FAIL
+
+
+def test_unknown_metric_direction_warns_instead_of_passing():
+    """Unknown metric directions cannot establish a safe comparison."""
+    baseline = _run(cases=[_record("c1", [("custom_metric", 10.0)])])
+    candidate = _run(cases=[_record("c1", [("custom_metric", 12.0)])])
+    report = detect_regressions(baseline, candidate)
+    assert report.metrics[0].status == RegressionStatus.WARNING
+    assert report.status == RegressionStatus.WARNING
+
+
+def test_missing_metric_warns_instead_of_passing():
+    """A metric present on only one side yields an unverified WARNING."""
+    baseline = _run(cases=[_record("c1", [("accuracy", 0.9)])])
+    candidate = _run(cases=[_record("c1", [("custom_metric", 0.8)])])
+    report = detect_regressions(baseline, candidate)
+    assert report.status == RegressionStatus.WARNING
+    assert any(metric.status == RegressionStatus.WARNING for metric in report.metrics)
+
+
+def test_absent_reports_warn_instead_of_passing():
+    """Runs without stored reports cannot establish regression status."""
+    report = detect_regressions(_run(), _run())
+    assert report.status == RegressionStatus.WARNING
+    assert report.reasons
