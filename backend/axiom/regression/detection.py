@@ -33,7 +33,18 @@ def _worst(statuses: list[RegressionStatus]) -> RegressionStatus:
 def _evaluate_delta(delta: MetricDelta, config: RegressionConfig) -> MetricRegression:
     """Map one metric delta to a PASS/WARNING/FAIL regression verdict."""
     thresholds = config.thresholds_for(delta.metric)
-    if delta.verdict != MetricVerdict.REGRESSED or delta.delta is None:
+    if delta.verdict == MetricVerdict.UNKNOWN or delta.delta is None:
+        return MetricRegression(
+            metric=delta.metric,
+            baseline=delta.value_a,
+            candidate=delta.value_b,
+            delta=delta.delta,
+            percent=delta.percent,
+            direction=delta.direction,
+            status=RegressionStatus.WARNING,
+            reason=f"{delta.metric}: insufficient data to classify regression ({delta.verdict.value})",
+        )
+    if delta.verdict != MetricVerdict.REGRESSED:
         return MetricRegression(
             metric=delta.metric,
             baseline=delta.value_a,
@@ -152,9 +163,12 @@ def detect_from_comparison(
                 reason=reason,
             )
         )
-    overall = _worst(
-        [entry.status for entry in metrics] + [case.status for case in cases]
-    )
+    statuses = [entry.status for entry in metrics] + [case.status for case in cases]
+    # Comparison warnings include absent reports, missing metrics, and unknown
+    # directions; none of those conditions should produce an unqualified PASS.
+    if warnings:
+        statuses.append(RegressionStatus.WARNING)
+    overall = _worst(statuses)
     reasons = [
         f"{entry.metric}: {entry.status.value} ({entry.reason})"
         for entry in metrics
@@ -167,6 +181,8 @@ def detect_from_comparison(
     ]
     if overall == RegressionStatus.PASS:
         reasons = ["No regression thresholds exceeded"]
+    elif not reasons:
+        reasons = ["Comparison contains warnings; regression status is not fully verifiable"]
     return RegressionReport(
         baseline_run_id=comparison.run_a_id,
         candidate_run_id=comparison.run_b_id,
