@@ -15,7 +15,7 @@ from axiom.domain.interfaces import (
 )
 from axiom.domain.models import ExperimentSpec, LoopSummary, ResearchObjective, RunStatus
 from axiom.execution import ExperimentEngine, ExperimentValidator
-from axiom.execution.artifacts import ArtifactStore
+from axiom.execution.artifacts import ArtifactStore, LocalArtifactStore
 from axiom.execution.evaluator import DeterministicEvaluator
 from axiom.execution.local_executor import LocalExecutor
 from axiom.memory.sqlite_repo import SqliteRepository
@@ -68,8 +68,28 @@ class LoopServices:
             )
         else:
             raise RuntimeError(f"Unsupported reasoning provider: {settings.reasoning_provider}")
-        artifact_store = ArtifactStore(root=settings.artifact_root)
-        executor = LocalExecutor(artifact_store=artifact_store)
+
+        artifact_store = LocalArtifactStore(root=settings.artifact_root)
+
+        # Select the appropriate executor backend based on configuration.
+        if settings.executor_backend == "local":
+            executor = LocalExecutor(artifact_store=artifact_store)
+        elif settings.executor_backend == "nebius_gpu":
+            from axiom.execution.nebius_cloud_job_client import RealNebiusJobClient
+            from axiom.execution.nebius_gpu_executor import NebiusGPUExecutor
+
+            job_client = RealNebiusJobClient(
+                settings=settings,
+                container_image=settings.nebius_container_image,
+                artifact_store_uri=settings.nebius_artifact_store_uri,
+            )
+            executor = NebiusGPUExecutor(
+                job_client=job_client,
+                artifact_store=artifact_store,
+            )
+        else:
+            raise RuntimeError(f"Unsupported executor backend: {settings.executor_backend}")
+
         return cls(
             provider=provider,
             researcher=ResearcherAgent(provider),
@@ -81,6 +101,7 @@ class LoopServices:
             artifact_store=artifact_store,
             engine=ExperimentEngine(executor=executor, validator=ExperimentValidator()),
         )
+
 
 
 class ResearchLoopService:

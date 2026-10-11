@@ -76,8 +76,8 @@ AXIOM supports three distinct execution modes:
 - **Safety**: Scripts check for required env vars and exit gracefully with a clear message if they are missing. No API keys are printed.
 
 ### C. Nebius AI Cloud GPU Experiment Execution
-- **Status**: **Experimental; end-to-end execution is not verified.** This branch includes an S3-compatible artifact downloader and metrics-retrieval helper. Its `RealNebiusJobClient` retrieves artifacts; it does not submit or poll Nebius AI Cloud jobs. The standard research loop in `backend/axiom/services/research_loop.py` still constructs `LocalExecutor`, so setting the S3 environment variables does not enable remote GPU execution.
-- **Verification**: No real GPU job or live object-storage request has verified job submission, output mounting, object-key mapping, or artifact retrieval. Treat remote GPU execution as unfinished until those behaviors are tested end to end.
+- **Status**: **Experimental; end-to-end execution is not verified.** The repository includes a `NebiusGPUExecutor` and a `RealNebiusJobClient` for the Nebius AI Cloud job API. To opt into that execution path, set `AXIOM_EXECUTOR_BACKEND=nebius_gpu`; local execution remains the default. The separate `NebiusStorageArtifactClient` and `integrate_nebius_artifact_retrieval()` helper provide S3-compatible metrics retrieval, but the mounted-output-to-object-key mapping is still an unverified assumption.
+- **Verification**: No real GPU job or live object-storage request has verified the end-to-end path. Job submission, status polling, output mounting, object-key mapping, and artifact retrieval must be validated with an explicitly authorized smoke test before describing cloud execution as production-ready.
 
 ## Model ID
 
