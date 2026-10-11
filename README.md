@@ -39,7 +39,7 @@ AXIOM supports two LLM providers:
 
 - **Purpose**: Deterministic, offline testing without API keys
 - **Usage**: Perfect for unit tests and development
-- **Configuration**: `AXIOM_LLM_PROVIDER=mock`
+- **Configuration**: `AXIOM_LLM_PROVIDER=mock` (compatible with the canonical API, where `mock` maps to the deterministic `echo` provider)
 
 ### Nebius Token Factory Provider
 
@@ -50,11 +50,11 @@ AXIOM supports two LLM providers:
   - Automatic retries with exponential backoff
   - Context truncation to prevent prompt overflow
   - Comprehensive error handling
-- **Configuration**: `AXIOM_LLM_PROVIDER=nebius`
+- **Configuration**: `AXIOM_REASONING_PROVIDER=nebius` (canonical API) or `AXIOM_LLM_PROVIDER=nebius` (compatibility alias)
 - **Required Environment Variables**:
   - `NEBIUS_API_KEY`: Your Nebius Token Factory API key
   - `NEBIUS_BASE_URL`: API base URL (default: `https://api.tokenfactory.nebius.com/v1/`)
-  - `NEBIUS_MODEL`: Model identifier (default: `meta-llama/Meta-Llama-3.1-70B-Instruct`)
+  - `NEBIUS_MODEL`: Model identifier (canonical API default: `nvidia/nemotron-3-super-120b-a12b`)
 
 
 ## Running Modes
@@ -72,7 +72,7 @@ AXIOM supports three distinct execution modes:
 - **Prerequisites**:
   1. Obtain a Nebius Token Factory API key.
   2. Populate `.env` (or export) with `NEBIUS_API_KEY`, optionally `NEBIUS_BASE_URL` and `NEBIUS_MODEL`.
-  3. Set `AXIOM_LLM_PROVIDER=nebius`.
+  3. Set `AXIOM_REASONING_PROVIDER=nebius` (or use `AXIOM_LLM_PROVIDER=nebius` for compatibility). The canonical API prioritizes `AXIOM_REASONING_PROVIDER` when both are set.
 - **Safety**: Scripts check for required env vars and exit gracefully with a clear message if they are missing. No API keys are printed.
 
 ### C. Nebius AI Cloud GPU Experiment Execution
@@ -88,8 +88,10 @@ The canonical research-loop settings in `backend/axiom/config.py` default to `nv
 1.  Clone the repository.
 2.  Create a virtual environment: `python -m venv .venv`
 3.  Activate the environment.
-4.  Install dependencies: `pip install -e .`
-5.  Set up environment variables using `.env.example`.
+4.  Install dependencies: `pip install -e '.[dev]'`
+5.  Copy `.env.example` to `.env` and set `NEBIUS_API_KEY` when using the real provider.
+6.  Start the canonical API from the repository root: `uvicorn backend.main:app --reload`.
+7.  Open `http://127.0.0.1:8000/docs` to explore the API. The canonical API entry point loads `.env` without overriding exported shell variables.
 
 ## Project Status
 

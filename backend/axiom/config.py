@@ -35,11 +35,22 @@ class Settings(BaseModel):
     nebius_s3_endpoint_url: str = "https://storage.nebius.com"
     nebius_s3_bucket_name: str | None = None
 
-
     def __init__(self, **data: object) -> None:
         env_data: dict[str, object] = {}
-        if "reasoning_provider" not in data and os.environ.get("AXIOM_REASONING_PROVIDER"):
-            env_data["reasoning_provider"] = os.environ["AXIOM_REASONING_PROVIDER"]
+
+        # Canonical API name first; keep the older documented variable as a
+        # compatibility alias. The legacy value "mock" maps to the canonical
+        # deterministic EchoReasoningProvider.
+        if "reasoning_provider" not in data:
+            provider = os.environ.get("AXIOM_REASONING_PROVIDER")
+            if not provider or not provider.strip():
+                provider = os.environ.get("AXIOM_LLM_PROVIDER")
+            if provider and provider.strip():
+                normalized_provider = provider.strip().lower()
+                env_data["reasoning_provider"] = (
+                    "echo" if normalized_provider == "mock" else normalized_provider
+                )
+
         if "executor_backend" not in data and os.environ.get("AXIOM_EXECUTOR_BACKEND"):
             env_data["executor_backend"] = os.environ["AXIOM_EXECUTOR_BACKEND"]
         if "max_iterations" not in data and os.environ.get("AXIOM_MAX_ITERATIONS"):
@@ -50,7 +61,8 @@ class Settings(BaseModel):
             env_data["db_path"] = os.environ["AXIOM_DB_PATH"]
         if "artifact_root" not in data and os.environ.get("AXIOM_ARTIFACT_ROOT"):
             env_data["artifact_root"] = os.environ["AXIOM_ARTIFACT_ROOT"]
-        # Nebius env vars – only read when not explicitly provided in data
+
+        # Nebius env vars – only read when not explicitly provided in data.
         if "nebius_api_key" not in data and os.environ.get("NEBIUS_API_KEY"):
             env_data["nebius_api_key"] = os.environ["NEBIUS_API_KEY"]
         if "nebius_base_url" not in data and os.environ.get("NEBIUS_BASE_URL"):
@@ -81,5 +93,5 @@ class Settings(BaseModel):
             env_data["nebius_s3_endpoint_url"] = os.environ["NEBIUS_S3_ENDPOINT_URL"]
         if "nebius_s3_bucket_name" not in data and os.environ.get("NEBIUS_S3_BUCKET_NAME"):
             env_data["nebius_s3_bucket_name"] = os.environ["NEBIUS_S3_BUCKET_NAME"]
-        super().__init__(**{**env_data, **data})
 
+        super().__init__(**{**env_data, **data})

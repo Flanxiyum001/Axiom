@@ -174,3 +174,31 @@ def test_nebius_gpu_config_fields_present():
     # Default values should be reasonable
     assert settings.nebius_gpu_count >= 1
     assert settings.nebius_max_wall_time_seconds > 0
+
+@pytest.mark.parametrize(
+    ("variable", "value", "expected"),
+    [
+        ("AXIOM_REASONING_PROVIDER", "echo", "echo"),
+        ("AXIOM_REASONING_PROVIDER", "nebius", "nebius"),
+        ("AXIOM_REASONING_PROVIDER", "mock", "echo"),
+        ("AXIOM_LLM_PROVIDER", "nebius", "nebius"),
+        ("AXIOM_LLM_PROVIDER", "mock", "echo"),
+    ],
+)
+def test_reasoning_provider_environment_aliases(monkeypatch, variable, value, expected):
+    """Both documented environment names work; legacy mock maps to canonical echo."""
+    monkeypatch.delenv("AXIOM_REASONING_PROVIDER", raising=False)
+    monkeypatch.delenv("AXIOM_LLM_PROVIDER", raising=False)
+    monkeypatch.setenv(variable, value)
+
+    settings = Settings()
+
+    assert settings.reasoning_provider == expected
+
+
+def test_canonical_reasoning_provider_takes_precedence(monkeypatch):
+    """AXIOM_REASONING_PROVIDER wins if both provider variables are set."""
+    monkeypatch.setenv("AXIOM_REASONING_PROVIDER", "nebius")
+    monkeypatch.setenv("AXIOM_LLM_PROVIDER", "mock")
+
+    assert Settings().reasoning_provider == "nebius"
