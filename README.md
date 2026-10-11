@@ -76,18 +76,12 @@ AXIOM supports three distinct execution modes:
 - **Safety**: Scripts check for required env vars and exit gracefully with a clear message if they are missing. No API keys are printed.
 
 ### C. Nebius AI Cloud GPU Experiment Execution
-- **Goal**: Run actual GPU‑accelerated experiments on Nebius AI Cloud.
-- **Status**: Implemented via `RealNebiusJobClient` in `backend/axiom/execution/nebius_gpu_executor.py`. Real GPU execution is available on the `feat/nemotron-planner-integration` branch.
+- **Status**: **Experimental; end-to-end execution is not verified.** This branch includes an S3-compatible artifact downloader and metrics-retrieval helper. Its `RealNebiusJobClient` retrieves artifacts; it does not submit or poll Nebius AI Cloud jobs. The standard research loop in `backend/axiom/services/research_loop.py` still constructs `LocalExecutor`, so setting the S3 environment variables does not enable remote GPU execution.
+- **Verification**: No real GPU job or live object-storage request has verified job submission, output mounting, object-key mapping, or artifact retrieval. Treat remote GPU execution as unfinished until those behaviors are tested end to end.
 
 ## Model ID
 
-If a verified Nemotron model is available, update the following placeholder with the exact model identifier:
-
-```
-NEBIUS_MODEL=<verified-model-id>
-```
-
-Until then, the default model identifier is `meta-llama/Meta-Llama-3.1-70B-Instruct` as defined in `backend/config.py`.
+The canonical research-loop settings in `backend/axiom/config.py` default to `nvidia/nemotron-3-super-120b-a12b`. Set `NEBIUS_MODEL` explicitly when selecting a different model. The legacy `backend/config.py` module has separate settings and is not the source of defaults for the canonical research-loop path.
 
 ## Development Setup
 
