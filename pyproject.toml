@@ -3,7 +3,7 @@ name = "axiom"
 version = "0.1.0"
 description = "Autonomous AI research platform (mock‑first architecture)."
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 license = "MIT"
 authors = [{name = "AXIOM Team", email = "team@example.com"}]
 
