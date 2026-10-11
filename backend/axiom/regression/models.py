@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import math
 from datetime import datetime
 from enum import Enum
 
@@ -29,9 +30,9 @@ class MetricThresholds(BaseModel):
     @field_validator("warn_abs", "fail_abs", "warn_pct", "fail_pct")
     @classmethod
     def _non_negative(cls, value: float | None) -> float | None:
-        """Reject negative thresholds; they would trigger on every regression."""
-        if value is not None and value < 0:
-            raise ValueError("Regression thresholds must be non-negative")
+        """Reject negative or non-finite thresholds before evaluation."""
+        if value is not None and (not math.isfinite(value) or value < 0):
+            raise ValueError("Regression thresholds must be finite and non-negative")
         return value
 
 
@@ -49,9 +50,9 @@ class RegressionConfig(BaseModel):
     )
     @classmethod
     def _non_negative(cls, value: float | None) -> float | None:
-        """Reject negative default thresholds before they reach evaluation."""
-        if value is not None and value < 0:
-            raise ValueError("Regression thresholds must be non-negative")
+        """Reject negative or non-finite default thresholds before evaluation."""
+        if value is not None and (not math.isfinite(value) or value < 0):
+            raise ValueError("Regression thresholds must be finite and non-negative")
         return value
 
     def thresholds_for(self, metric: str) -> MetricThresholds:

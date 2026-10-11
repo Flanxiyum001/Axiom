@@ -217,6 +217,35 @@ def test_negative_thresholds_rejected():
         raise AssertionError(f"expected ValueError for {bad.__name__}")
 
 
+def test_nonfinite_thresholds_rejected():
+    """NaN and infinite thresholds are invalid and rejected before evaluation."""
+    for value in (float("nan"), float("inf"), float("-inf")):
+        for kwargs in ({"warn_abs": value}, {"fail_pct": value}):
+            try:
+                MetricThresholds(**kwargs)
+            except ValueError:
+                continue
+            raise AssertionError(f"expected ValueError for MetricThresholds({kwargs})")
+        for kwargs in ({"default_warn_abs": value}, {"default_fail_pct": value}):
+            try:
+                RegressionConfig(**kwargs)
+            except ValueError:
+                continue
+            raise AssertionError(f"expected ValueError for RegressionConfig({kwargs})")
+
+
+def test_zero_baseline_per_metric_percentage_only_warns():
+    """Per-metric pct-only overrides cannot pass a zero-baseline regression."""
+    baseline = _run(cases=[_record("c1", [("latency_ms", 0.0)])])
+    candidate = _run(cases=[_record("c1", [("latency_ms", 50.0)])])
+    config = RegressionConfig(
+        per_metric={"latency_ms": MetricThresholds(warn_pct=10.0, fail_pct=20.0)}
+    )
+    report = detect_regressions(baseline, candidate, config)
+    assert report.metrics[0].percent is None
+    assert report.status == RegressionStatus.WARNING
+
+
 def test_detection_leaves_inputs_untouched():
     """Detection never mutates runs or the comparison result."""
     baseline = _run(cases=[_record("c1", [("accuracy", 0.9)])])
