@@ -1,5 +1,5 @@
 import pytest
-import httpx2 as httpx
+import httpx
 from axiom.execution.nebius_storage_client import (
     NebiusStorageClient,
     NebiusStorageError,
