@@ -20,7 +20,7 @@ class RegressionStatus(str, Enum):
 
 
 class MetricThresholds(BaseModel):
-    """Warning/failure limits for one metric, absolute and percentage points."""
+    """Warning/failure limits for one metric, using absolute and relative percentage changes."""
 
     warn_abs: float | None = None
     fail_abs: float | None = None
