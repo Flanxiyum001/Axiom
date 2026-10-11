@@ -3,8 +3,11 @@
 from __future__ import annotations
 
 import json
+from itertools import count
 from pathlib import Path
 from types import SimpleNamespace
+
+import axiom.benchmarks.inference_runner as inference_runner
 
 import pytest
 
@@ -17,6 +20,18 @@ from axiom.benchmarks.inference_runner import (
     write_report,
 )
 from axiom.regression.models import RegressionStatus
+
+
+@pytest.fixture
+def stable_clock(monkeypatch):
+    """Make latency comparisons deterministic without sleeping."""
+    ticks = count()
+
+    def clock():
+        value = next(ticks)
+        return (value // 2) + (value % 2) * 0.001
+
+    monkeypatch.setattr(inference_runner.time, "perf_counter", clock)
 
 
 _ANSWERS = {
@@ -85,7 +100,7 @@ def test_request_limit_is_checked_before_any_client_call():
     assert client.calls == []
 
 
-def test_run_collects_latency_validity_accuracy_tokens_and_regression():
+def test_run_collects_latency_validity_accuracy_tokens_and_regression(stable_clock):
     dataset = load_default_dataset()
     client = FakeClient()
     report = run_inference_benchmark(
@@ -109,7 +124,7 @@ def test_run_collects_latency_validity_accuracy_tokens_and_regression():
     assert all(call["response_format"] == {"type": "json_object"} for call in client.calls)
 
 
-def test_invalid_json_is_counted_as_failed_validity_not_request_failure():
+def test_invalid_json_is_counted_as_failed_validity_not_request_failure(stable_clock):
     dataset = load_default_dataset()
     client = FakeClient(lambda _: _response("this is not json"))
     report = run_inference_benchmark(
@@ -124,7 +139,7 @@ def test_invalid_json_is_counted_as_failed_validity_not_request_failure():
     assert report.regression.status == RegressionStatus.WARNING
 
 
-def test_request_errors_are_recorded_without_exposing_exception_details():
+def test_request_errors_are_recorded_without_exposing_exception_details(stable_clock):
     dataset = load_default_dataset()
 
     def fail_with_secret(_):
@@ -142,7 +157,7 @@ def test_request_errors_are_recorded_without_exposing_exception_details():
     assert all(attempt.error_type == "RuntimeError" for attempt in report.attempts)
 
 
-def test_missing_token_usage_is_explicit_and_warns():
+def test_missing_token_usage_is_explicit_and_warns(stable_clock):
     dataset = load_default_dataset()
 
     def no_usage(kwargs):
@@ -165,7 +180,7 @@ def test_missing_token_usage_is_explicit_and_warns():
     assert any("Token usage was unavailable" in item for item in report.comparison.warnings)
 
 
-def test_write_report_is_json_and_never_overwrites(tmp_path: Path):
+def test_write_report_is_json_and_never_overwrites(tmp_path: Path, stable_clock):
     report = run_inference_benchmark(
         dataset=load_default_dataset(),
         client=FakeClient(),
