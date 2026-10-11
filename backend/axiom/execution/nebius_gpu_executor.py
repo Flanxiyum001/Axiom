@@ -42,7 +42,10 @@ class RealNebiusJobClient:
     def get_artifact_bytes(self, job_id: str, artifact_name: str) -> bytes:
         """Download an artifact from Nebius Storage by job ID and artifact name.
 
-        The object key follows the deterministic pattern: jobs/{job_id}/{artifact_name}
+        The object key is the artifact name directly (e.g. ``metrics.json``).
+        When a bucket is mounted at ``containerPath: /output``, the artifact name
+        maps 1:1 to the S3 object key. This avoids requiring the job ID inside
+        the container, which Nebius AI Cloud does not pass automatically.
         """
         bucket = self._settings.nebius_s3_bucket_name
         if not bucket:
@@ -50,7 +53,7 @@ class RealNebiusJobClient:
                 "Nebius S3 bucket name not configured. "
                 "Set NEBIUS_S3_BUCKET_NAME environment variable or nebius_s3_bucket_name in settings."
             )
-        key = f"jobs/{job_id}/{artifact_name}"
+        key = artifact_name
         return self._storage.get_object(bucket, key)
 
     def persist_artifact(self, run_id: str, content: bytes, name: str = "metrics.json") -> Artifact:
@@ -127,13 +130,14 @@ def integrate_nebius_artifact_retrieval(
     except Exception as e:
         logger.warning("Failed to persist metrics artifact: %s", e)
 
-    # Parse the metrics using the existing AXIOM metrics protocol
+    # Parse the metrics using the downloaded artifact content.
+    # The artifact was downloaded from S3; parse it using the AXIOM metrics protocol.
     try:
-        run = client.parse_and_populate_metrics(run, run.stdout or "")
+        run = client.parse_and_populate_metrics(run, metrics_content.decode("utf-8"))
     except Exception as e:
         logger.warning("Failed to parse metrics from artifact: %s", e)
         run.status = RunStatus.FAILED
-        run.error = f"Metrics parsing error: {e}"
+        run.stderr = f"Metrics parsing error: {e}"
         return run
 
     # Preserve cloud_job_id, status, exit code, and existing error behavior

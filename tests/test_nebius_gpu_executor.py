@@ -54,7 +54,7 @@ def test_get_artifact_bytes_success():
         content = client.get_artifact_bytes("job-123", "metrics.json")
 
         assert content == b'{"metric": "accuracy", "value": 0.95}'
-        mock_get_object.assert_called_once_with("my-bucket", "jobs/job-123/metrics.json")
+        mock_get_object.assert_called_once_with("my-bucket", "metrics.json")
 
 
 def test_integrate_nebius_artifact_retrieval_success():
