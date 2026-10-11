@@ -28,6 +28,14 @@ class Settings(BaseModel):
     nebius_artifact_store_uri: str | None = None
     nebius_max_wall_time_seconds: float = Field(default=3600.0, gt=0)
 
+    # Nebius S3-compatible object storage configuration (optional)
+    nebius_s3_access_key_id: str | None = None
+    nebius_s3_secret_access_key: str | None = None
+    nebius_s3_region: str = "us-east-1"
+    nebius_s3_endpoint_url: str = "https://storage.nebius.com"
+    nebius_s3_bucket_name: str | None = None
+
+
     def __init__(self, **data: object) -> None:
         env_data: dict[str, object] = {}
         if "reasoning_provider" not in data and os.environ.get("AXIOM_REASONING_PROVIDER"):
@@ -63,5 +71,15 @@ class Settings(BaseModel):
             env_data["nebius_artifact_store_uri"] = os.environ["NEBIUS_ARTIFACT_STORE_URI"]
         if "nebius_max_wall_time_seconds" not in data and os.environ.get("NEBIUS_MAX_WALL_TIME_SECONDS"):
             env_data["nebius_max_wall_time_seconds"] = float(os.environ["NEBIUS_MAX_WALL_TIME_SECONDS"])
+        if "nebius_s3_access_key_id" not in data and os.environ.get("NEBIUS_S3_ACCESS_KEY_ID"):
+            env_data["nebius_s3_access_key_id"] = os.environ["NEBIUS_S3_ACCESS_KEY_ID"]
+        if "nebius_s3_secret_access_key" not in data and os.environ.get("NEBIUS_S3_SECRET_ACCESS_KEY"):
+            env_data["nebius_s3_secret_access_key"] = os.environ["NEBIUS_S3_SECRET_ACCESS_KEY"]
+        if "nebius_s3_region" not in data and os.environ.get("NEBIUS_S3_REGION"):
+            env_data["nebius_s3_region"] = os.environ["NEBIUS_S3_REGION"]
+        if "nebius_s3_endpoint_url" not in data and os.environ.get("NEBIUS_S3_ENDPOINT_URL"):
+            env_data["nebius_s3_endpoint_url"] = os.environ["NEBIUS_S3_ENDPOINT_URL"]
+        if "nebius_s3_bucket_name" not in data and os.environ.get("NEBIUS_S3_BUCKET_NAME"):
+            env_data["nebius_s3_bucket_name"] = os.environ["NEBIUS_S3_BUCKET_NAME"]
         super().__init__(**{**env_data, **data})
 

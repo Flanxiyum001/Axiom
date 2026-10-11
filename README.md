@@ -75,19 +75,13 @@ AXIOM supports three distinct execution modes:
   3. Set `AXIOM_LLM_PROVIDER=nebius`.
 - **Safety**: Scripts check for required env vars and exit gracefully with a clear message if they are missing. No API keys are printed.
 
-### C. Future Nebius AI Cloud GPU Experiment Execution
-- **Goal**: Run actual GPU‑accelerated experiments on Nebius AI Cloud.
-- **Status**: Not yet implemented. The current codebase only runs mock experiment code; real GPU execution will be added in a future release.
+### C. Nebius AI Cloud GPU Experiment Execution
+- **Status**: **Experimental; end-to-end execution is not verified.** The repository includes a `NebiusGPUExecutor` and a `RealNebiusJobClient` for the Nebius AI Cloud job API. To opt into that execution path, set `AXIOM_EXECUTOR_BACKEND=nebius_gpu`; local execution remains the default. The separate `NebiusStorageArtifactClient` and `integrate_nebius_artifact_retrieval()` helper provide S3-compatible metrics retrieval, but the mounted-output-to-object-key mapping is still an unverified assumption.
+- **Verification**: No real GPU job or live object-storage request has verified the end-to-end path. Job submission, status polling, output mounting, object-key mapping, and artifact retrieval must be validated with an explicitly authorized smoke test before describing cloud execution as production-ready.
 
 ## Model ID
 
-If a verified Nemotron model is available, update the following placeholder with the exact model identifier:
-
-```
-NEBIUS_MODEL=<verified-model-id>
-```
-
-Until then, the default model identifier is `meta-llama/Meta-Llama-3.1-70B-Instruct` as defined in `backend/config.py`.
+The canonical research-loop settings in `backend/axiom/config.py` default to `nvidia/nemotron-3-super-120b-a12b`. Set `NEBIUS_MODEL` explicitly when selecting a different model. The legacy `backend/config.py` module has separate settings and is not the source of defaults for the canonical research-loop path.
 
 ## Development Setup
 

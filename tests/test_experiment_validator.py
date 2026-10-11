@@ -172,3 +172,80 @@ def test_validation_failure_can_become_evidence():
     assert len(history) == 1
     assert history[0].runs[0].status == RunStatus.FAILED
     assert history[0].evidence is None
+
+
+def test_validator_allows_harmless_functions_named_run_and_call():
+    validator = ExperimentValidator()
+    spec = create_valid_spec()
+    spec.code = "def run():\n    return 1\ndef call():\n    return run()\nprint(call())"
+    result = validator.validate(spec)
+    assert result.valid
+
+
+def test_validator_rejects_aliased_subprocess_import():
+    validator = ExperimentValidator()
+    spec = create_valid_spec()
+    spec.code = "import subprocess as sp\nsp.run(['echo', 'hi'])"
+    result = validator.validate(spec)
+    assert not result.valid
+    assert any("subprocess" in reason for reason in result.reasons)
+
+
+def test_validator_rejects_aliased_os_dangerous_call():
+    validator = ExperimentValidator()
+    spec = create_valid_spec()
+    spec.code = "import os as ops\nops.system('echo hi')"
+    result = validator.validate(spec)
+    assert not result.valid
+    assert any("os.system" in reason for reason in result.reasons)
+
+
+def test_validator_rejects_getattr_os_dangerous_call():
+    validator = ExperimentValidator()
+    spec = create_valid_spec()
+    spec.code = "import os\ngetattr(os, 'system')('echo hi')"
+    result = validator.validate(spec)
+    assert not result.valid
+    assert any("getattr(os" in reason for reason in result.reasons)
+
+
+def test_validator_rejects_imported_os_dangerous_alias():
+    validator = ExperimentValidator()
+    spec = create_valid_spec()
+    spec.code = "from os import system as shell\nshell('echo hi')"
+    result = validator.validate(spec)
+    assert not result.valid
+    assert any("os.system" in reason for reason in result.reasons)
+
+
+def test_validator_blocks_shutil_import_aliases():
+    validator = ExperimentValidator()
+    spec = create_valid_spec()
+    spec.code = "import shutil as fs\nfs.rmtree('/tmp/test')"
+    result = validator.validate(spec)
+    assert not result.valid
+    assert any("shutil" in reason for reason in result.reasons)
+
+
+def test_validator_rejects_os_exec_and_spawn_calls():
+    validator = ExperimentValidator()
+    for method in ("execv", "spawnv", "popen"):
+        spec = create_valid_spec()
+        spec.code = f"import os\nos.{method}('echo')"
+        result = validator.validate(spec)
+        assert not result.valid, method
+
+
+
+def test_validator_rejects_alias_inside_function_defined_before_import():
+    validator = ExperimentValidator()
+    spec = create_valid_spec()
+    spec.code = (
+        "def launch():\n"
+        "    ops.system('echo hi')\n"
+        "import os as ops\n"
+        "launch()"
+    )
+    result = validator.validate(spec)
+    assert not result.valid
+    assert any("os.system" in reason for reason in result.reasons)
