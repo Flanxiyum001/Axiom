@@ -252,9 +252,9 @@ def test_levers_behave_differently():
         assert candidate < baseline, lever
         improvements[lever] = (baseline - candidate) / baseline * 100.0
     assert len(set(codes.values())) == 3
-    assert '"batch_size": (400000, 200000)' in codes["batch_size"]
-    assert '"threads": (400000, 240000)' in codes["threads"]
-    assert '"precision": (800000, 400000)' in codes["precision"]
+    assert '"batch_size": (8000000, 4000000)' in codes["batch_size"]
+    assert '"threads": (8000000, 4800000)' in codes["threads"]
+    assert '"precision": (16000000, 8000000)' in codes["precision"]
     assert all(value > 20.0 for value in improvements.values())
 
 

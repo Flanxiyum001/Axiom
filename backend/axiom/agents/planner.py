@@ -33,10 +33,57 @@ PLAN_SYSTEM_PROMPT = (
 
 CODE_SYSTEM_PROMPT = (
     "You are the AXIOM experiment code generator. Write a self-contained "
-    "Python script implementing the planned experiment. It must honor the "
-    "baseline/candidate mode from environment variables and print the metrics "
-    "protocol JSON as the last stdout line. Respond only with JSON."
+    "Python script implementing the planned experiment. "
+    "CRITICAL: Use only standard library modules (os, json, time, random, statistics, math). "
+    "Do NOT import torch, tensorflow, or any external ML library. "
+    "Simulate the model inference using simple arithmetic or random number generation. "
+    "The script must read the mode from the environment variable EXPERIMENT_MODE "
+    "(set to 'baseline' or 'candidate'). "
+    "It must print, as the LAST line of stdout, a single JSON object with a "
+    '"metrics" key containing a list of metric entries. Each entry must have '
+    '"name" (e.g. "latency_ms"), "value" (a float), and optionally '
+    '"unit" and "iteration". Example: {"metrics": [{"name": "latency_ms", '
+    '"value": 95.5, "unit": "ms", "iteration": 0}]}. '
+    "Always include the objective metric in your output. "
+    "Respond only with JSON."
 )
+
+
+def _normalize_code(code: str) -> str:
+    """Safely normalizes escape sequences in LLM-generated code.
+
+    LLMs returning JSON often escape newlines and quotes as literal escape sequences
+    (\\n, \\t, \\', \\"). We only unescape if the code does not parse as valid Python,
+    to avoid corrupting valid escape sequences inside strings, regexes, or raw strings.
+    """
+    import ast
+    try:
+        # If it parses as valid Python, don't touch it!
+        ast.parse(code)
+        return code
+    except SyntaxError:
+        pass
+
+    # If it failed to parse, it likely contains literal escaped newlines/characters.
+    # Try codecs.decode with unicode_escape first.
+    try:
+        import codecs
+        decoded = codecs.decode(code, "unicode_escape")
+        ast.parse(decoded)
+        return decoded
+    except Exception:
+        pass
+
+    # Fallback to targeted manual replacement
+    fallback = (
+        code.replace("\\n", "\n")
+        .replace("\\t", "\t")
+        .replace("\\u0027", "'")
+        .replace("\\u0022", '"')
+        .replace('\\"', '"')
+        .replace("\\'", "'")
+    )
+    return fallback
 
 
 def _lever_from_statement(statement: str) -> str:
@@ -110,10 +157,15 @@ class PlannerAgent:
             output_type=CodeOutput,
         )
 
+        # Normalize code: some providers (e.g., Nebius) may escape characters
+        # using JSON-style escape sequences (\\n, \\u0027, etc.) instead of
+        # literal characters. Unescape them safely so the code is valid Python.
+        raw_code = _normalize_code(code_output.code)
+
         # Pin the hypothesized lever into candidate code so baseline and
         # candidate always measure identical workloads (fair A/B).
         lever = _lever_from_statement(hypothesis.statement)
-        code = EchoProviderCodePatcher.pin_lever(code_output.code, lever)
+        code = EchoProviderCodePatcher.pin_lever(raw_code, lever)
 
         # The plan defines the candidate condition: unless the provider set an
         # explicit mode, run the spec in candidate mode (the baseline spec is
@@ -129,6 +181,7 @@ class PlannerAgent:
             code=code,
             parameters=code_output.parameters,
             environment=environment,
+            workload_type="synthetic",
         )
         logger.info(
             "Planner designed plan %s and spec %s for hypothesis %s (lever=%s)",

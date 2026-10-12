@@ -117,6 +117,7 @@ class ExperimentSpec(BaseModel):
     code: str
     parameters: dict[str, str | int | float | bool] = Field(default_factory=dict)
     environment: dict[str, str] = Field(default_factory=dict)
+    workload_type: str = "synthetic"
     created_at: datetime = Field(default_factory=utcnow)
 
 
@@ -226,3 +227,5 @@ class LoopSummary(BaseModel):
     target_met: bool = False
     stopped: bool = False
     stop_reason: str | None = None
+    workload_type: str = "synthetic"
+    lever: str | None = None

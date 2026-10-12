@@ -49,12 +49,13 @@ class ExperimentEngine:
         timeout_seconds: float,
     ) -> ExperimentEngineResult:
         """Execute baseline and candidate specs for plan.repetitions each."""
-        # 1. Derive candidate spec with __AXIOM_LEVER_MODE__ = "candidate"
+        # 1. Derive candidate spec with mode = "candidate"
         candidate_env = dict(spec_candidate.environment)
         candidate_env["__AXIOM_LEVER_MODE__"] = "candidate"
+        candidate_env["EXPERIMENT_MODE"] = "candidate"
         cand_spec = spec_candidate.model_copy(update={"environment": candidate_env})
 
-        # 2. Derive baseline spec with __AXIOM_LEVER_MODE__ = "baseline"
+        # 2. Derive baseline spec with mode = "baseline"
         base_name = spec_candidate.name
         if base_name.endswith("-candidate"):
             base_name = base_name[:-10]
@@ -62,6 +63,7 @@ class ExperimentEngine:
 
         baseline_env = dict(spec_candidate.environment)
         baseline_env["__AXIOM_LEVER_MODE__"] = "baseline"
+        baseline_env["EXPERIMENT_MODE"] = "baseline"
 
         base_spec = ExperimentSpec(
             plan_id=plan.id,

@@ -136,11 +136,11 @@ class EchoReasoningProvider(ReasoningProvider):
             '    "precision": work_precision,\n'
             "}\n"
             "TICKS = {\n"
-            '    "batch_size": (400000, 200000),\n'
-            '    "threads": (400000, 240000),\n'
-            '    "precision": (800000, 400000),\n'
+            '    "batch_size": (8000000, 4000000),\n'
+            '    "threads": (8000000, 4800000),\n'
+            '    "precision": (16000000, 8000000),\n'
             "}\n"
-            "base_ticks, cand_ticks = TICKS.get(LEVER, (400000, 400000))\n"
+            "base_ticks, cand_ticks = TICKS.get(LEVER, (8000000, 8000000))\n"
             'ticks = cand_ticks if MODE == "candidate" else base_ticks\n'
             "work = WORK.get(LEVER, work_batch_size)\n"
             "\n"

@@ -3,7 +3,7 @@ from __future__ import annotations
 from pydantic import BaseModel, Field
 
 from axiom.agents.analyst import AnalystAgent
-from axiom.agents.planner import PlannerAgent
+from axiom.agents.planner import PlannerAgent, _lever_from_statement
 from axiom.agents.researcher import ResearcherAgent
 from axiom.config import Settings
 from axiom.domain.interfaces import (
@@ -13,7 +13,13 @@ from axiom.domain.interfaces import (
     ProviderError,
     ReasoningProvider,
 )
-from axiom.domain.models import ExperimentSpec, LoopSummary, ResearchObjective, RunStatus
+from axiom.domain.models import (
+    ExperimentSpec,
+    Hypothesis,
+    LoopSummary,
+    ResearchObjective,
+    RunStatus,
+)
 from axiom.execution import ExperimentEngine, ExperimentValidator
 from axiom.execution.artifacts import ArtifactStore, LocalArtifactStore
 from axiom.execution.evaluator import DeterministicEvaluator
@@ -153,6 +159,8 @@ class ResearchLoopService:
                     target_met=False,
                     stopped=False,
                     stop_reason=None,
+                    workload_type=result.candidate_spec.workload_type,
+                    lever=_lever_from_statement(hypothesis.statement),
                 )
                 continue
             evaluation = self.services.evaluator.evaluate(
@@ -180,6 +188,8 @@ class ResearchLoopService:
                     target_met=True,
                     stopped=True,
                     stop_reason="target_met",
+                    workload_type=result.candidate_spec.workload_type,
+                    lever=_lever_from_statement(hypothesis.statement),
                 )
             last_summary = LoopSummary(
                 iteration=iteration,
@@ -193,6 +203,8 @@ class ResearchLoopService:
                 target_met=False,
                 stopped=False,
                 stop_reason=None,
+                workload_type=result.candidate_spec.workload_type,
+                lever=_lever_from_statement(hypothesis.statement),
             )
         last_summary.stopped = True
         if last_summary.stop_reason is None:

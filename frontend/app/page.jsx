@@ -155,6 +155,18 @@ export default function DashboardPage() {
       )
     : [];
 
+const provenance = useMemo(() => {
+    if (!selectedRun) return null;
+    const spec = selectedRun.spec || selectedRun.plan;
+    return {
+      workload_type: (spec && spec.workload_type) || selectedRun.workload_type || "synthetic",
+      lever: (spec && spec.lever) || selectedRun.lever || "batch_size",
+      parameters: (spec && spec.parameters) || {},
+      environment: (spec && spec.environment) || {},
+      run_count: Array.isArray(selectedRun.runs) ? selectedRun.runs.length : (selectedRun.run_ids ? selectedRun.run_ids.length : 0),
+    };
+  }, [selectedRun]);
+
   async function handleConnect(event) {
     event.preventDefault();
     setApiBase(apiDraft.trim().replace(/\/+$/, ""));
@@ -503,6 +515,37 @@ export default function DashboardPage() {
                           </div>
                           <p className="hypothesis-statement">{hypothesis.statement}</p>
                           {hypothesis.rationale && <p className="hypothesis-rationale">{hypothesis.rationale}</p>}
+                        </div>
+                      )}
+
+                      {selectedRun && provenance && (
+                        <div className="insight-card">
+                          <div className="insight-card-head">
+                            <span className="insight-number">P</span>
+                            <span className="section-kicker">BENCHMARK PROVENANCE</span>
+                          </div>
+                          <div className="provenance-grid">
+                            <div className="provenance-row">
+                              <span className="provenance-label">Workload type</span>
+                              <span className="provenance-value">{readable(provenance.workload_type || "synthetic")}</span>
+                            </div>
+                            <div className="provenance-row">
+                              <span className="provenance-label">Lever tested</span>
+                              <span className="provenance-value">{readable(provenance.lever || "batch_size")}</span>
+                            </div>
+                            <div className="provenance-row">
+                              <span className="provenance-label">Baseline settings</span>
+                              <span className="provenance-value">{JSON.stringify(provenance.parameters || {})}</span>
+                            </div>
+                            <div className="provenance-row">
+                              <span className="provenance-label">Candidate settings</span>
+                              <span className="provenance-value">{JSON.stringify(provenance.environment || {})}</span>
+                            </div>
+                            <div className="provenance-row">
+                              <span className="provenance-label">Measurement method</span>
+                              <span className="provenance-value">{readable(provenance.workload_type || "synthetic")} workload, {provenance.run_count} recorded runs</span>
+                            </div>
+                          </div>
                         </div>
                       )}
 
