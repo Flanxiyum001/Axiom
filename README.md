@@ -52,6 +52,39 @@ Copy `.env.example` to `.env` locally, select `AXIOM_REASONING_PROVIDER=nebius`,
 
 Canonical defaults: base URL `https://api.tokenfactory.nebius.com/v1/`, model `nvidia/nemotron-3-super-120b-a12b`. Override with `NEBIUS_BASE_URL` and `NEBIUS_MODEL`. A Nebius run uses billable reasoning requests. It still executes synthetic experiments locally. `AXIOM_LLM_PROVIDER=mock` remains a compatibility alias for Echo; `AXIOM_REASONING_PROVIDER` takes precedence.
 
+#### One-request Nemotron smoke test
+
+The canonical research loop selects `backend.llm.nebius.NebiusLLMProvider` through
+`LoopServices.from_settings()`. Its default is Echo; the Nebius provider sends an
+OpenAI-compatible chat completion to Token Factory with the model from
+`backend/axiom/config.py`. The opt-in check below calls that same provider once
+with a small structured reply. It does not start the research loop, execute
+generated Python, launch a GPU job, or write an experiment artifact.
+
+1. Install dependencies from the repository root: `python -m pip install -e '.[dev]'`.
+2. Put an authorized Token Factory key in the process environment as
+   `NEBIUS_API_KEY` or in the repository-local, ignored `.env` file. Keep
+   `NEBIUS_BASE_URL=https://api.tokenfactory.nebius.com/v1/` and
+   `NEBIUS_MODEL=nvidia/nemotron-3-super-120b-a12b` (their canonical defaults).
+   Shell variables take precedence over `.env`.
+3. Run `python -m scripts.smoke_nebius_reasoning --live` from the repository root.
+
+The command prints only the provider name, requested model, response model, and
+whether the structured marker was validated. It requires the response model to
+match Nemotron exactly. A missing key, rejected credentials, rate limit,
+timeout, malformed response, or model mismatch produces a nonzero exit and a
+sanitized error. It makes at most one HTTP attempt, so a transient failure must
+be retried manually. Do not paste the key into command-line arguments or share
+the local `.env` file.
+
+**Verification status (2026-10-19):** This checkout had no `NEBIUS_API_KEY` in
+the environment or local `.env`, so a real Token Factory request could not be
+performed here. The missing-key path and mocked provider tests can be checked
+offline; a maintainer with authorized credentials must run the command above to
+confirm live inference. One successful inference would verify Nemotron reasoning
+only. The Echo demo's CPU arithmetic is synthetic and is not evidence of model
+inference speedup, quantization, multithreading, or GPU performance.
+
 Never put credentials in `NEXT_PUBLIC_*` variables or frontend files. Only the API base URL belongs in `NEXT_PUBLIC_AXIOM_API_URL`. For another frontend origin, configure backend `AXIOM_CORS_ORIGINS` as a comma-separated list of exact origins.
 
 ## Verification
