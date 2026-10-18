@@ -55,3 +55,26 @@ test("uses explicit synthetic-workload wording", () => {
   assert.equal(value.measurementMethod, "Synthetic workload; not real model inference");
 });
 
+test("derives provenance from the fresh loop-summary API shape", () => {
+  const value = deriveProvenance({
+    workload_type: "synthetic",
+    lever: "threads",
+    hypothesis: { statement: "Set CPU threads to four" },
+    plan: { variables: [{ name: "cpu_threads", baseline_value: "1", candidate_value: "4" }] },
+    spec: {
+      workload_type: "synthetic",
+      code: 'LEVER = "threads"',
+      parameters: { sample_count: 3 },
+      environment: { EXPERIMENT_MODE: "candidate" },
+    },
+    run_ids: ["1", "2", "3"],
+  });
+  assert.equal(value.lever, "threads");
+  assert.equal(value.leverConsistency, "consistent");
+  assert.equal(value.runCount, 3);
+  assert.deepEqual(value.baselineSettings, { cpu_threads: "1" });
+  assert.deepEqual(value.candidateSettings, { cpu_threads: "4" });
+  assert.deepEqual(value.environment, { EXPERIMENT_MODE: "candidate" });
+  assert.deepEqual(value.parameters, { sample_count: 3 });
+});
+
