@@ -107,7 +107,8 @@ class ExperimentPlan(BaseModel):
 class ExperimentSpec(BaseModel):
     """The exact, executable definition of an experiment.
 
-    ``code`` is executed verbatim by the executor in an isolated sandbox.
+    ``code`` is executed verbatim by the executor in a subprocess. The local
+    executor and AST validator do not form a secure sandbox.
     """
 
     id: str = Field(default_factory=lambda: new_id("exp"))
@@ -118,6 +119,8 @@ class ExperimentSpec(BaseModel):
     parameters: dict[str, str | int | float | bool] = Field(default_factory=dict)
     environment: dict[str, str] = Field(default_factory=dict)
     workload_type: str = "synthetic"
+    intervention_status: str = "insufficient"
+    intervention_detail: str = "Executed intervention has not been verified"
     created_at: datetime = Field(default_factory=utcnow)
 
 
@@ -144,6 +147,7 @@ class ExperimentRun(BaseModel):
 
     id: str = Field(default_factory=lambda: new_id("run"))
     experiment_id: str
+    workload_type: str = "synthetic"
     status: RunStatus = RunStatus.PENDING
     started_at: datetime | None = None
     completed_at: datetime | None = None

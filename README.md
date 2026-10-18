@@ -1,98 +1,89 @@
-# AXIOM
+﻿# AXIOM
 
-AXIOM is an autonomous AI research and experimentation platform designed to accelerate scientific discovery and optimization.
+AXIOM turns an objective into a hypothesis, controlled experiment plan, executable Python, measured comparison, and saved analyst evidence. FastAPI serves a Next.js research dashboard. Licensed under [Apache 2.0](LICENSE).
 
-## Core Research Loop
+**What works today:** Echo provides offline reasoning; Nebius/Nemotron can provide live reasoning. The dashboard planner generates **synthetic CPU workloads**, not real model-inference benchmarks. Echo's candidate reduces arithmetic loop iterations. A label such as `threads` or `precision` names a simulated intervention; it does not demonstrate threading, quantization, GPU throughput, or a model latency improvement.
 
-AXIOM operates on a continuous, evidence-based experimental loop:
+## Fresh setup
 
-1.  **Research Objective**: Define a measurable goal (e.g., "Reduce inference latency by 20%").
-2.  **Hypothesis**: Generate a testable hypothesis.
-3.  **Experiment Plan**: Create a structured plan to test the hypothesis.
-4.  **Experiment Code**: Generate the necessary code for the experiment.
-5.  **Execute Experiment**: Run the experiment in an isolated, safe environment.
-6.  **Collect Metrics**: Gather objective performance data.
-7.  **Evaluate Results**: Compare metrics against the baseline.
-8.  **Analyze Evidence**: Determine if the hypothesis was supported.
-9.  **Generate Next Hypothesis**: Use findings to inform the next iteration.
+Use Python **3.11 or 3.12** and Node.js **22**, matching CI. From the repository root:
 
-## MVP Scope
+```sh
+python -m venv .venv
+# macOS/Linux:
+source .venv/bin/activate
+# Windows PowerShell instead:
+# .\.venv\Scripts\Activate.ps1
+python -m pip install -e ".[dev]"
+```
 
-The initial MVP focuses on **ML model inference optimization**.
+For a credential-free backend, explicitly select Echo and local execution. These exported values override any local `.env` provider choice.
 
-## Planned Architecture
+```sh
+# macOS/Linux
+export AXIOM_REASONING_PROVIDER=echo
+export AXIOM_EXECUTOR_BACKEND=local
+export PYTHON_DOTENV_DISABLED=1
+python -m uvicorn backend.main:app --host 127.0.0.1 --port 8000
+```
 
-- **Backend**: Python, FastAPI, Pydantic.
-- **Agent Layer**: Specialized agents (Researcher, Planner, Analyst) for orchestration.
-- **Experiment Layer**: Modular runner, evaluator, and sandbox for safe execution.
-  See [docs/experiment-layer.md](docs/experiment-layer.md) for the architecture
-  guide and [experiments/examples/end_to_end_benchmark.py](experiments/examples/end_to_end_benchmark.py)
-  for a runnable end-to-end demo.
-- **Memory**: Persistent store for experiment history and findings.
-- **Frontend**: Next.js (planned).
+PowerShell equivalent:
 
-## LLM Provider Integration
+```powershell
+$env:AXIOM_REASONING_PROVIDER='echo'
+$env:AXIOM_EXECUTOR_BACKEND='local'
+$env:PYTHON_DOTENV_DISABLED='1'
+python -m uvicorn backend.main:app --host 127.0.0.1 --port 8000
+```
 
-AXIOM supports two LLM providers:
+In a second terminal:
 
-### Mock Provider (Default)
+```sh
+cd frontend
+npm install --no-audit --no-fund
+npm run dev
+```
 
-- **Purpose**: Deterministic, offline testing without API keys
-- **Usage**: Perfect for unit tests and development
-- **Configuration**: `AXIOM_LLM_PROVIDER=mock` (compatible with the canonical API, where `mock` maps to the deterministic `echo` provider)
+Open http://localhost:3000. The default API is http://127.0.0.1:8000; API docs are at `/docs`. Confirm **API connected** and provider **echo**. Enter `Reduce model inference latency by 20%`, click **Create objective**, select one iteration, then **Run research**. Inspect the hypothesis, measured baseline/candidate, analyst conclusion and provenance. Refresh the page to inspect persisted history. Default storage is `axiom.db` and `artifacts/`; set `AXIOM_DB_PATH` and `AXIOM_ARTIFACT_ROOT` to choose separate storage.
 
-### Nebius Token Factory Provider
+## Optional Nebius reasoning
 
-- **Purpose**: Real LLM inference using Nebius Token Factory OpenAI-compatible API
-- **Models**: Supports Nemotron models and other OpenAI-compatible models
-- **Features**:
-  - Structured output via JSON schema enforcement
-  - Automatic retries with exponential backoff
-  - Context truncation to prevent prompt overflow
-  - Comprehensive error handling
-- **Configuration**: `AXIOM_REASONING_PROVIDER=nebius` (canonical API) or `AXIOM_LLM_PROVIDER=nebius` (compatibility alias)
-- **Required Environment Variables**:
-  - `NEBIUS_API_KEY`: Your Nebius Token Factory API key
-  - `NEBIUS_BASE_URL`: API base URL (default: `https://api.tokenfactory.nebius.com/v1/`)
-  - `NEBIUS_MODEL`: Model identifier (canonical API default: `nvidia/nemotron-3-super-120b-a12b`)
+Copy `.env.example` to `.env` locally, select `AXIOM_REASONING_PROVIDER=nebius`, and supply `NEBIUS_API_KEY` in your backend environment or local `.env`. Do not print the key. Unset `PYTHON_DOTENV_DISABLED` if you want the backend to load `.env`. Remove any exported Echo provider override before selecting Nebius in the file. Keep `AXIOM_EXECUTOR_BACKEND=local`.
 
+Canonical defaults: base URL `https://api.tokenfactory.nebius.com/v1/`, model `nvidia/nemotron-3-super-120b-a12b`. Override with `NEBIUS_BASE_URL` and `NEBIUS_MODEL`. A Nebius run uses billable reasoning requests. It still executes synthetic experiments locally. `AXIOM_LLM_PROVIDER=mock` remains a compatibility alias for Echo; `AXIOM_REASONING_PROVIDER` takes precedence.
 
-## Running Modes
+Never put credentials in `NEXT_PUBLIC_*` variables or frontend files. Only the API base URL belongs in `NEXT_PUBLIC_AXIOM_API_URL`. For another frontend origin, configure backend `AXIOM_CORS_ORIGINS` as a comma-separated list of exact origins.
 
-AXIOM supports three distinct execution modes:
+## Verification
 
-### A. Local Mock Mode
-- **Provider**: `mock`
-- **Behavior**: Deterministic, offline, no network calls. Used for unit tests, CI, rapid iteration.
-- **Setup**: No environment variables required.
+```sh
+python -m pytest tests/ -q
+cd frontend
+npm test
+npm run build
+```
 
-### B. Real Nebius LLM Mode
-- **Provider**: `nebius`
-- **Behavior**: Real LLM inference via the Nebius Token Factory (Nemotron or other OpenAI‑compatible models). Experiment execution remains deterministic (mock), only the reasoning layer is real.
-- **Prerequisites**:
-  1. Obtain a Nebius Token Factory API key.
-  2. Populate `.env` (or export) with `NEBIUS_API_KEY`, optionally `NEBIUS_BASE_URL` and `NEBIUS_MODEL`.
-  3. Set `AXIOM_REASONING_PROVIDER=nebius` (or use `AXIOM_LLM_PROVIDER=nebius` for compatibility). The canonical API prioritizes `AXIOM_REASONING_PROVIDER` when both are set.
-- **Safety**: Scripts check for required env vars and exit gracefully with a clear message if they are missing. No API keys are printed.
+Tests disable dotenv before application imports, reset configuration per test, and block external socket connections. Provider tests inject mocked clients. No live credential is needed. CI runs Python 3.11 and 3.12, frontend provenance tests, production build, and the browser smoke test.
 
-### C. Nebius AI Cloud GPU Experiment Execution
-- **Status**: **Experimental; end-to-end execution is not verified.** The repository includes a `NebiusGPUExecutor` and a `RealNebiusJobClient` for the Nebius AI Cloud job API. To opt into that execution path, set `AXIOM_EXECUTOR_BACKEND=nebius_gpu`; local execution remains the default. The separate `NebiusStorageArtifactClient` and `integrate_nebius_artifact_retrieval()` helper provide S3-compatible metrics retrieval, but the mounted-output-to-object-key mapping is still an unverified assumption.
-- **Verification**: No real GPU job or live object-storage request has verified the end-to-end path. Job submission, status polling, output mounting, object-key mapping, and artifact retrieval must be validated with an explicitly authorized smoke test before describing cloud execution as production-ready.
+Install Chromium once, with the Python virtual environment active:
 
-## Model ID
+```sh
+cd frontend
+npm install --no-audit --no-fund
+npx playwright install chromium
+npm run test:smoke
+```
 
-The canonical research-loop settings in `backend/axiom/config.py` default to `nvidia/nemotron-3-super-120b-a12b`. Set `NEBIUS_MODEL` explicitly when selecting a different model. The legacy `backend/config.py` module has separate settings and is not the source of defaults for the canonical research-loop path.
+`npm run test:smoke` starts a local Echo backend on port 8100 and Next.js on 3100, uses a new temporary database/artifact directory, creates and runs an objective in Chromium, verifies API-derived evidence and provenance, and reloads saved history. It refuses to reuse existing servers. If Python is not on PATH, set `AXIOM_TEST_PYTHON` to the virtual environment's Python executable. Failures retain screenshots and traces in `frontend/test-results/`; `npx playwright show-trace <trace.zip>` opens a trace. Temporary smoke storage uses the OS temp directory and may be retained for diagnosis.
 
-## Development Setup
+## Architecture and evidence boundaries
 
-1.  Clone the repository.
-2.  Create a virtual environment: `python -m venv .venv`
-3.  Activate the environment.
-4.  Install dependencies: `pip install -e '.[dev]'`
-5.  Copy `.env.example` to `.env` and set `NEBIUS_API_KEY` when using the real provider.
-6.  Start the canonical API from the repository root: `uvicorn backend.main:app --reload`.
-7.  Open `http://127.0.0.1:8000/docs` to explore the API. The canonical API entry point loads `.env` without overriding exported shell variables.
+`backend/main.py` mounts the canonical routes in `backend/axiom/api/routes.py`. `LoopServices` connects Researcher -> Planner -> AST validator -> local executor -> deterministic evaluator -> Analyst -> SQLite. `axiom/` is an import shim pointing to `backend/axiom`. `frontend/app/page.jsx` consumes API responses and persisted history; `frontend/lib/provenance.mjs` derives display provenance.
 
-## Project Status
+Baseline and candidate execute the same Python code and parameters, with both mode environment variables forced to the appropriate condition. The executor parses metric JSON from process stdout; the evaluator computes the comparison without asking an LLM for measurement values. Generated code can still emit fabricated values: parsing stdout is **not independent measurement attestation**. Only the known Echo implementation is identified as a verified synthetic intervention. Unknown or conflicting implementations receive an insufficient-evidence analyst conclusion. Matching lever declarations do not prove an implementation. The dashboard distinguishes planned settings, spec parameters, execution environment, and measured metrics.
 
-Foundational repository setup with mock provider and Nebius integration ready.
+The AST validator is **not a secure sandbox**. Local execution uses subprocesses, temporary working directories, minimal environment, timeouts and best-effort POSIX resource limits. It does not isolate the host filesystem or network, and Windows does not supply POSIX resource limits. Run only trusted experiments on a disposable, unprivileged machine. Do not expose this unauthenticated local API to untrusted users. See [pipeline audit](docs/pipeline-audit.md) for remaining limitations and the smallest real-inference follow-up.
+
+Nebius GPU execution exists as an experimental adapter; its submission, mounts, storage mapping and artifact retrieval are not verified end to end. Do not enable it for the offline demo or claim GPU benchmark results.
+
+See the [2:40 demo script and fallback](docs/demo-walkthrough.md), [release report](docs/release-audit.md), and [experiment-layer guide](docs/experiment-layer.md).

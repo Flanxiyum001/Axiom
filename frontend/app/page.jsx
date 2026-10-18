@@ -156,7 +156,18 @@ export default function DashboardPage() {
       )
     : [];
 
-const provenance = useMemo(() => deriveProvenance(selectedRun), [selectedRun]);
+  const provenance = useMemo(() => deriveProvenance(selectedRun), [selectedRun]);
+  const scriptTargetReached = Boolean(evaluation?.target_met);
+  const syntheticInterventionSupported =
+    provenance?.interventionStatus === "verified_synthetic" &&
+    provenance?.workloadType === "synthetic" &&
+    evidence?.hypothesis_supported === true;
+  const targetStatus =
+    provenance?.interventionStatus === "mismatch"
+      ? "Intervention mismatch"
+      : syntheticInterventionSupported
+        ? "Synthetic script metric target met"
+        : "Insufficient evidence for optimization";
 
   async function handleConnect(event) {
     event.preventDefault();
@@ -491,10 +502,10 @@ const provenance = useMemo(() => deriveProvenance(selectedRun), [selectedRun]);
                       <div className="result-heading">
                         <div>
                           <div className="section-kicker">LATEST RESULT</div>
-                          <h3>{evaluation && evaluation.target_met ? "Target reached" : "Evidence collected"}</h3>
+                          <h3>{scriptTargetReached ? "Script metric target reached" : "Evidence collected"}</h3>
                         </div>
-                        <span className={"pill " + (evaluation && evaluation.target_met ? "pill-success" : "pill-neutral")}>
-                          {evaluation && evaluation.target_met ? "Target met" : selectedRun.stopped ? readable(selectedRun.stop_reason || "completed") : "Reviewed"}
+                        <span className={"pill " + (scriptTargetReached && syntheticInterventionSupported ? "pill-success" : "pill-neutral")}>
+                          {scriptTargetReached ? targetStatus : selectedRun.stopped ? readable(selectedRun.stop_reason || "completed") : "Reviewed"}
                         </span>
                       </div>
 
@@ -517,6 +528,10 @@ const provenance = useMemo(() => deriveProvenance(selectedRun), [selectedRun]);
                           </div>
                           <div className="provenance-grid">
                             <div className="provenance-row">
+                              <span className="provenance-label">Intervention evidence</span>
+                              <span className="provenance-value">{provenance.interventionDetail}</span>
+                            </div>
+                            <div className="provenance-row">
                               <span className="provenance-label">Workload type</span>
                               <span className="provenance-value">{readable(provenance.workloadType)}</span>
                             </div>
@@ -535,7 +550,7 @@ const provenance = useMemo(() => deriveProvenance(selectedRun), [selectedRun]);
                               </span>
                             </div>
                             <div className="provenance-row">
-                              <span className="provenance-label">Baseline settings</span>
+                              <span className="provenance-label">Planned baseline settings</span>
                               <span className="provenance-value">
                                 {Object.keys(provenance.baselineSettings).length
                                   ? JSON.stringify(provenance.baselineSettings)
@@ -543,7 +558,7 @@ const provenance = useMemo(() => deriveProvenance(selectedRun), [selectedRun]);
                               </span>
                             </div>
                             <div className="provenance-row">
-                              <span className="provenance-label">Candidate settings</span>
+                              <span className="provenance-label">Planned candidate settings</span>
                               <span className="provenance-value">
                                 {Object.keys(provenance.candidateSettings).length
                                   ? JSON.stringify(provenance.candidateSettings)

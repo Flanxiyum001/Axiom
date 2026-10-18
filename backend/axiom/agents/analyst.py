@@ -22,6 +22,9 @@ SYSTEM_PROMPT = (
     "infrastructure - not by you). Interpret the result: state whether the "
     "hypothesis is supported, key observations, limitations, and a concise "
     "conclusion. Never contradict the measured numbers. Respond only with JSON."
+    " The canonical planner currently runs synthetic CPU workloads. Never claim "
+    "these measurements establish real model-inference, quantization, threading, "
+    "or GPU performance improvements."
 )
 
 

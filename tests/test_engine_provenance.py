@@ -54,3 +54,6 @@ def test_engine_preserves_workload_type_for_baseline_and_candidate():
         "candidate",
     ]
     assert all(spec.workload_type == "real_model_inference" for spec in executor.specs)
+    assert all(run.workload_type == "real_model_inference" for run in result.individual_runs)
+    assert result.baseline_run.workload_type == "real_model_inference"
+    assert result.candidate_run.workload_type == "real_model_inference"

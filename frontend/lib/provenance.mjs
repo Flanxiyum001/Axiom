@@ -4,10 +4,11 @@ function canonicalLever(value) {
     .replace(/[_-]+/g, " ")
     .trim();
 
-  if (/batch|batching/.test(normalized)) return "batch_size";
-  if (/\bthreads?\b|num threads/.test(normalized)) return "threads";
-  if (/precision|fp16|fp32|int8|quantiz/.test(normalized)) return "precision";
-  return null;
+  const found = [];
+  if (/\bbatch(?:ing| size)?\b/.test(normalized)) found.push("batch_size");
+  if (/\bthreads?\b/.test(normalized)) found.push("threads");
+  if (/precision|fp16|fp32|int8|quantiz/.test(normalized)) found.push("precision");
+  return found.length === 1 ? found[0] : null;
 }
 
 function asObjectForPlanVariables(variables, field) {
@@ -36,7 +37,8 @@ export function deriveProvenance(selectedRun) {
   const plan = selectedRun.plan || null;
   const variables = Array.isArray(plan?.variables) ? plan.variables : [];
   const hypothesisLever = canonicalLever(selectedRun.hypothesis?.statement);
-  const planLever = canonicalLever(variables.map((variable) => variable?.name || "").join(" "));
+  const planLevers = variables.map((variable) => canonicalLever(variable?.name)).filter(Boolean);
+  const planLever = new Set(planLevers).size === 1 ? planLevers[0] : null;
   const declaredLever = canonicalLever(selectedRun.lever);
 
   const codeMatch =
@@ -53,6 +55,7 @@ export function deriveProvenance(selectedRun) {
   ].filter((entry) => entry[1]);
 
   const sourceValues = new Set(leverSources.map((entry) => entry[1]));
+  planLevers.forEach((lever) => sourceValues.add(lever));
   const leverConsistency =
     sourceValues.size > 1
       ? "mismatch"
@@ -71,7 +74,7 @@ export function deriveProvenance(selectedRun) {
   if (workloadType === "synthetic") {
     measurementMethod = "Synthetic workload; not real model inference";
   } else if (workloadType === "real_model_inference") {
-    measurementMethod = "Real model-inference workload";
+    measurementMethod = "Declared real model-inference workload; implementation not independently verified";
   } else if (workloadType !== "unknown") {
     measurementMethod = `${workloadType.replaceAll("_", " ")} workload`;
   }
@@ -89,5 +92,7 @@ export function deriveProvenance(selectedRun) {
     environment: spec?.environment && typeof spec.environment === "object" ? spec.environment : {},
     runCount,
     measurementMethod,
+    interventionStatus: spec?.intervention_status || "insufficient",
+    interventionDetail: spec?.intervention_detail || "Executed intervention has not been verified",
   };
 }

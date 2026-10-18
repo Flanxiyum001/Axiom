@@ -55,6 +55,28 @@ test("uses explicit synthetic-workload wording", () => {
   assert.equal(value.measurementMethod, "Synthetic workload; not real model inference");
 });
 
+test("matching declarations alone do not verify the executed intervention", () => {
+  const value = deriveProvenance({
+    hypothesis: { statement: "Optimize threads" },
+    plan: { variables: [{ name: "threads" }] },
+    spec: { code: 'LEVER = "threads"' },
+  });
+  assert.equal(value.leverConsistency, "consistent");
+  assert.equal(value.interventionStatus, "insufficient");
+  assert.match(value.interventionDetail, /not been verified/);
+});
+
+test("a real-inference label is a declaration, not independent verification", () => {
+  const value = deriveProvenance({ spec: { workload_type: "real_model_inference" } });
+  assert.match(value.measurementMethod, /not independently verified/);
+});
+
+test("multiple planned levers cannot be reduced to the first matching name", () => {
+  const value = deriveProvenance({ plan: { variables: [{ name: "threads" }, { name: "precision" }] } });
+  assert.equal(value.lever, "unknown");
+  assert.equal(value.leverConsistency, "mismatch");
+});
+
 test("derives provenance from the fresh loop-summary API shape", () => {
   const value = deriveProvenance({
     workload_type: "synthetic",

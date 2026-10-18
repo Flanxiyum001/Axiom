@@ -19,6 +19,7 @@ from axiom.domain.models import (
     ResearchObjective,
 )
 from axiom.providers.schemas import CodeOutput, PlanOutput
+from axiom.providers.echo_provider import EchoReasoningProvider
 
 logger = logging.getLogger("axiom.agents")
 
@@ -86,11 +87,15 @@ def _normalize_code(code: str) -> str:
     return fallback
 
 
-def _lever_from_statement(statement: str) -> str:
-    for lever in KNOWN_LEVERS:
-        if lever in statement:
-            return lever
-    return "batch_size"
+def _lever_from_statement(statement: str) -> str | None:
+    text = statement.lower().replace("-", " ").replace("_", " ")
+    matches = []
+    for lever, pattern in (("batch_size", r"\bbatch(?:ing| size)?\b"),
+                           ("threads", r"\bthreads?\b"),
+                           ("precision", r"\b(?:precision|fp16|fp32|int8|quantization)\b")):
+        if re.search(pattern, text):
+            matches.append(lever)
+    return matches[0] if len(matches) == 1 else None
 
 
 class PlannerAgent:
@@ -162,10 +167,10 @@ class PlannerAgent:
         # literal characters. Unescape them safely so the code is valid Python.
         raw_code = _normalize_code(code_output.code)
 
-        # Pin the hypothesized lever into candidate code so baseline and
-        # candidate always measure identical workloads (fair A/B).
+        # Preserve the generated intervention. Renaming a LEVER declaration
+        # cannot make an unrelated implementation test the stated hypothesis.
         lever = _lever_from_statement(hypothesis.statement)
-        code = EchoProviderCodePatcher.pin_lever(raw_code, lever)
+        code = raw_code
 
         # The plan defines the candidate condition: unless the provider set an
         # explicit mode, run the spec in candidate mode (the baseline spec is
@@ -183,6 +188,21 @@ class PlannerAgent:
             environment=environment,
             workload_type="synthetic",
         )
+        planned_levers = [_lever_from_statement(variable.name) for variable in plan.variables]
+        declaration = EchoProviderCodePatcher._LEVER_ASSIGN.search(code)
+        code_lever = declaration.group(1) if declaration else None
+        if lever and (any(item and item != lever for item in planned_levers)
+                      or (code_lever and code_lever != lever)):
+            spec.intervention_status = "mismatch"
+            spec.intervention_detail = "Hypothesis, planned variable, and generated lever disagree"
+        elif (lever and planned_levers == [lever]
+              and code == EchoReasoningProvider.synthetic_benchmark_code(objective.metric, lever)
+              and plan.variables == EchoReasoningProvider()._plan(context).variables):
+            spec.intervention_status = "verified_synthetic"
+            spec.intervention_detail = (
+                "Known synthetic implementation: candidate reduces arithmetic loop iterations; "
+                "does not change actual model batch size, threads, or precision"
+            )
         logger.info(
             "Planner designed plan %s and spec %s for hypothesis %s (lever=%s)",
             plan.id,
