@@ -528,7 +528,7 @@ const provenance = useMemo(() => deriveProvenance(selectedRun), [selectedRun]);
                               <span className="provenance-label">Provenance check</span>
                               <span className="provenance-value">
                                 {provenance.leverConsistency === "consistent"
-                                  ? "Available hypothesis, plan, and code agree"
+                                  ? "Consistent: " + Object.entries(provenance.leverSources).map(([source, lever]) => source + "=" + lever).join(", ")
                                   : provenance.leverConsistency === "mismatch"
                                     ? "Mismatch: " + Object.entries(provenance.leverSources).map(([source, lever]) => source + "=" + lever).join(", ")
                                     : "Insufficient recorded detail to verify"}
