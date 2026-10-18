@@ -8,7 +8,8 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "start": "next start"
+    "start": "next start",
+    "test": "node --test lib/provenance.test.mjs"
   },
   "dependencies": {
     "next": "16.4.0",

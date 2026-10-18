@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { deriveProvenance } from "../lib/provenance.mjs";
 
 const DEFAULT_API_URL =
   process.env.NEXT_PUBLIC_AXIOM_API_URL || "http://127.0.0.1:8000";
@@ -155,17 +156,7 @@ export default function DashboardPage() {
       )
     : [];
 
-const provenance = useMemo(() => {
-    if (!selectedRun) return null;
-    const spec = selectedRun.spec || selectedRun.plan;
-    return {
-      workload_type: (spec && spec.workload_type) || selectedRun.workload_type || "synthetic",
-      lever: (spec && spec.lever) || selectedRun.lever || "batch_size",
-      parameters: (spec && spec.parameters) || {},
-      environment: (spec && spec.environment) || {},
-      run_count: Array.isArray(selectedRun.runs) ? selectedRun.runs.length : (selectedRun.run_ids ? selectedRun.run_ids.length : 0),
-    };
-  }, [selectedRun]);
+const provenance = useMemo(() => deriveProvenance(selectedRun), [selectedRun]);
 
   async function handleConnect(event) {
     event.preventDefault();
@@ -519,7 +510,7 @@ const provenance = useMemo(() => {
                       )}
 
                       {selectedRun && provenance && (
-                        <div className="insight-card">
+                        <div className="insight-card" data-testid="benchmark-provenance">
                           <div className="insight-card-head">
                             <span className="insight-number">P</span>
                             <span className="section-kicker">BENCHMARK PROVENANCE</span>
@@ -527,23 +518,49 @@ const provenance = useMemo(() => {
                           <div className="provenance-grid">
                             <div className="provenance-row">
                               <span className="provenance-label">Workload type</span>
-                              <span className="provenance-value">{readable(provenance.workload_type || "synthetic")}</span>
+                              <span className="provenance-value">{readable(provenance.workloadType)}</span>
                             </div>
                             <div className="provenance-row">
                               <span className="provenance-label">Lever tested</span>
-                              <span className="provenance-value">{readable(provenance.lever || "batch_size")}</span>
+                              <span className="provenance-value">{readable(provenance.lever)}</span>
+                            </div>
+                            <div className="provenance-row">
+                              <span className="provenance-label">Provenance check</span>
+                              <span className="provenance-value">
+                                {provenance.leverConsistency === "consistent"
+                                  ? "Consistent: " + Object.entries(provenance.leverSources).map(([source, lever]) => source + "=" + lever).join(", ")
+                                  : provenance.leverConsistency === "mismatch"
+                                    ? "Mismatch: " + Object.entries(provenance.leverSources).map(([source, lever]) => source + "=" + lever).join(", ")
+                                    : "Insufficient recorded detail to verify"}
+                              </span>
                             </div>
                             <div className="provenance-row">
                               <span className="provenance-label">Baseline settings</span>
-                              <span className="provenance-value">{JSON.stringify(provenance.parameters || {})}</span>
+                              <span className="provenance-value">
+                                {Object.keys(provenance.baselineSettings).length
+                                  ? JSON.stringify(provenance.baselineSettings)
+                                  : "Not recorded in plan"}
+                              </span>
                             </div>
                             <div className="provenance-row">
                               <span className="provenance-label">Candidate settings</span>
-                              <span className="provenance-value">{JSON.stringify(provenance.environment || {})}</span>
+                              <span className="provenance-value">
+                                {Object.keys(provenance.candidateSettings).length
+                                  ? JSON.stringify(provenance.candidateSettings)
+                                  : "Not recorded in plan"}
+                              </span>
+                            </div>
+                            <div className="provenance-row">
+                              <span className="provenance-label">Spec parameters</span>
+                              <span className="provenance-value">{JSON.stringify(provenance.parameters)}</span>
+                            </div>
+                            <div className="provenance-row">
+                              <span className="provenance-label">Execution environment</span>
+                              <span className="provenance-value">{JSON.stringify(provenance.environment)}</span>
                             </div>
                             <div className="provenance-row">
                               <span className="provenance-label">Measurement method</span>
-                              <span className="provenance-value">{readable(provenance.workload_type || "synthetic")} workload, {provenance.run_count} recorded runs</span>
+                              <span className="provenance-value">{provenance.measurementMethod}; {provenance.runCount} recorded runs</span>
                             </div>
                           </div>
                         </div>
