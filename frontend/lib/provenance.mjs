@@ -1,5 +1,3 @@
-const KNOWN_LEVERS = ["batch_size", "threads", "precision"];
-
 function canonicalLever(value) {
   const normalized = String(value ?? "")
     .toLowerCase()
