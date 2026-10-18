@@ -122,4 +122,4 @@ The AST validator is **not a secure sandbox**. Local execution uses subprocesses
 
 Nebius GPU execution exists as an experimental adapter; its submission, mounts, storage mapping and artifact retrieval are not verified end to end. Do not enable it for the offline demo or claim GPU benchmark results.
 
-See the [2:40 demo script and fallback](docs/demo-walkthrough.md), [release report](docs/release-audit.md), and [experiment-layer guide](docs/experiment-layer.md).
+See the [2:50 demo script and fallback](docs/demo-walkthrough.md), [hackathon submission draft](docs/hackathon-submission.md), [readiness checklist](docs/hackathon-readiness.md), [release report](docs/release-audit.md), and [experiment-layer guide](docs/experiment-layer.md).
