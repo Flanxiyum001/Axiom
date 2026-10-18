@@ -72,6 +72,7 @@ class ExperimentEngine:
             code=spec_candidate.code,
             parameters=dict(spec_candidate.parameters),
             environment=baseline_env,
+            workload_type=spec_candidate.workload_type,
         )
 
         # 3. Validate BEFORE any executor call.
