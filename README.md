@@ -77,13 +77,16 @@ sanitized error. It makes at most one HTTP attempt, so a transient failure must
 be retried manually. Do not paste the key into command-line arguments or share
 the local `.env` file.
 
-**Verification status (2026-10-19):** This checkout had no `NEBIUS_API_KEY` in
-the environment or local `.env`, so a real Token Factory request could not be
-performed here. The missing-key path and mocked provider tests can be checked
-offline; a maintainer with authorized credentials must run the command above to
-confirm live inference. One successful inference would verify Nemotron reasoning
-only. The Echo demo's CPU arithmetic is synthetic and is not evidence of model
-inference speedup, quantization, multithreading, or GPU performance.
+**Live verification (2026-10-19):** With an authorized credential supplied only
+through the process environment, the command above exited successfully after
+one Token Factory request. It reported provider `nebius`, requested model and
+response model `nvidia/nemotron-3-super-120b-a12b`, and `"validated": true`.
+The credential did not appear in command output. The missing-key path also
+failed safely; authentication failures and other error paths were verified with
+mocked clients, not with another live request. This result verifies one Nemotron
+reasoning call only. The Echo demo's CPU arithmetic is synthetic and is not
+evidence of model-inference speedup, quantization, multithreading, or GPU
+performance.
 
 Never put credentials in `NEXT_PUBLIC_*` variables or frontend files. Only the API base URL belongs in `NEXT_PUBLIC_AXIOM_API_URL`. For another frontend origin, configure backend `AXIOM_CORS_ORIGINS` as a comma-separated list of exact origins.
 
