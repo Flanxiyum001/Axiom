@@ -13,6 +13,19 @@ jobs:
   tests:
     name: Tests (Python ${{ matrix.python-version }})
     runs-on: ubuntu-latest
+    env:
+      # Keep tests hermetic: never consume personal .env settings or live API credentials.
+      AXIOM_REASONING_PROVIDER: echo
+      AXIOM_EXECUTOR_BACKEND: local
+      AXIOM_DB_PATH: ":memory:"
+      AXIOM_ARTIFACT_ROOT: artifacts
+      NEBIUS_API_KEY: ""
+      NEBIUS_S3_ACCESS_KEY_ID: ""
+      NEBIUS_S3_SECRET_ACCESS_KEY: ""
+      PYTHONUTF8: "1"
+      PYTHONIOENCODING: utf-8
+      LANG: C.UTF-8
+      TZ: UTC
     strategy:
       fail-fast: false
       matrix:
