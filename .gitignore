@@ -12,6 +12,11 @@ dist/
 
 # Environment variables
 .env
+.env.*
+!.env.example
+.pytest_cache/
+sprint-*.log
+.sprint-baseline/
 
 # IDEs
 .vscode/

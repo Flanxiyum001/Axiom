@@ -7,7 +7,8 @@ def _run_script(script_path: Path, env: dict) -> subprocess.CompletedProcess:
     """Run a Python script in a subprocess with given environment.
     Returns the CompletedProcess for inspection.
     """
-    return subprocess.run([sys.executable, str(script_path)], env=env, capture_output=True, text=True)
+    return subprocess.run([sys.executable, str(script_path)], env=env, capture_output=True,
+                          text=True, encoding="utf-8", timeout=30)
 
 
 def test_nebius_smoke_test_fails_safely_when_credentials_missing(tmp_path: Path) -> None:

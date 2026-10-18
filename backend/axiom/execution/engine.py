@@ -73,6 +73,8 @@ class ExperimentEngine:
             parameters=dict(spec_candidate.parameters),
             environment=baseline_env,
             workload_type=spec_candidate.workload_type,
+            intervention_status=spec_candidate.intervention_status,
+            intervention_detail=spec_candidate.intervention_detail,
         )
 
         # 3. Validate BEFORE any executor call.
@@ -89,6 +91,7 @@ class ExperimentEngine:
 
             failed_run = ExperimentRun(
                 experiment_id=cand_spec.id,
+                workload_type=cand_spec.workload_type,
                 status=RunStatus.FAILED,
                 stderr=stderr,
                 completed_at=datetime.now(UTC),
@@ -98,6 +101,7 @@ class ExperimentEngine:
                 candidate_spec=cand_spec,
                 baseline_run=ExperimentRun(
                     experiment_id=base_spec.id,
+                    workload_type=base_spec.workload_type,
                     status=RunStatus.FAILED,
                     stderr=stderr,
                     completed_at=datetime.now(UTC),
@@ -137,6 +141,9 @@ class ExperimentEngine:
         # 5. Aggregate runs
         aggregated_baseline = self._aggregate_runs(base_spec.id, baseline_runs)
         aggregated_candidate = self._aggregate_runs(cand_spec.id, candidate_runs)
+        # Executors and aggregate records retain the spec's workload label.
+        for run in baseline_runs + candidate_runs + [aggregated_baseline, aggregated_candidate]:
+            run.workload_type = spec_candidate.workload_type
 
         return ExperimentEngineResult(
             baseline_spec=base_spec,

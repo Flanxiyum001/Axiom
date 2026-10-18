@@ -174,6 +174,15 @@ class ResearchLoopService:
                 evidence = self.services.analyst.analyze(evaluation, hypothesis, objective)
             except ProviderError as exc:
                 raise RuntimeError(f"Analyst failed: {exc}") from exc
+            evidence.limitations.append(result.candidate_spec.intervention_detail)
+            if result.candidate_spec.intervention_status != "verified_synthetic":
+                evidence.hypothesis_supported = False
+                evidence.confidence = 0.0
+                evidence.conclusion = (
+                    "Insufficient evidence to support the stated intervention: "
+                    + result.candidate_spec.intervention_detail
+                    + ". Metric comparison describes only the executed script."
+                )
             self.services.repository.save_evidence(evidence)
             if evaluation.target_met:
                 return LoopSummary(

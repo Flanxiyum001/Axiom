@@ -491,7 +491,7 @@ const provenance = useMemo(() => deriveProvenance(selectedRun), [selectedRun]);
                       <div className="result-heading">
                         <div>
                           <div className="section-kicker">LATEST RESULT</div>
-                          <h3>{evaluation && evaluation.target_met ? "Target reached" : "Evidence collected"}</h3>
+                          <h3>{evaluation && evaluation.target_met ? "Measured target reached" : "Evidence collected"}</h3>
                         </div>
                         <span className={"pill " + (evaluation && evaluation.target_met ? "pill-success" : "pill-neutral")}>
                           {evaluation && evaluation.target_met ? "Target met" : selectedRun.stopped ? readable(selectedRun.stop_reason || "completed") : "Reviewed"}
@@ -517,6 +517,10 @@ const provenance = useMemo(() => deriveProvenance(selectedRun), [selectedRun]);
                           </div>
                           <div className="provenance-grid">
                             <div className="provenance-row">
+                              <span className="provenance-label">Intervention evidence</span>
+                              <span className="provenance-value">{provenance.interventionDetail}</span>
+                            </div>
+                            <div className="provenance-row">
                               <span className="provenance-label">Workload type</span>
                               <span className="provenance-value">{readable(provenance.workloadType)}</span>
                             </div>
@@ -535,7 +539,7 @@ const provenance = useMemo(() => deriveProvenance(selectedRun), [selectedRun]);
                               </span>
                             </div>
                             <div className="provenance-row">
-                              <span className="provenance-label">Baseline settings</span>
+                              <span className="provenance-label">Planned baseline settings</span>
                               <span className="provenance-value">
                                 {Object.keys(provenance.baselineSettings).length
                                   ? JSON.stringify(provenance.baselineSettings)
@@ -543,7 +547,7 @@ const provenance = useMemo(() => deriveProvenance(selectedRun), [selectedRun]);
                               </span>
                             </div>
                             <div className="provenance-row">
-                              <span className="provenance-label">Candidate settings</span>
+                              <span className="provenance-label">Planned candidate settings</span>
                               <span className="provenance-value">
                                 {Object.keys(provenance.candidateSettings).length
                                   ? JSON.stringify(provenance.candidateSettings)

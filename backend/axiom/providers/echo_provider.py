@@ -9,6 +9,8 @@ from axiom.domain.models import PlanVariable
 
 
 _LEVERS = ("batch_size", "threads", "precision")
+_TICKS = {"batch_size": (8000000, 4000000), "threads": (8000000, 4800000),
+          "precision": (16000000, 8000000)}
 
 
 def _lever_for_iteration(iteration: int) -> str:
@@ -57,8 +59,11 @@ class EchoReasoningProvider(ReasoningProvider):
     def _plan(self, context: dict[str, str]) -> PlanOutput:
         objective = ResearchObjective.model_validate_json(context["objective"])
         lever = _lever_from_text(context.get("hypothesis", ""))
+        baseline_ticks, candidate_ticks = _TICKS[lever]
         return PlanOutput(
-            variables=[PlanVariable(name=lever, baseline_value="default", candidate_value="optimized")],
+            variables=[PlanVariable(name=lever,
+                                    baseline_value=f"{baseline_ticks} arithmetic iterations",
+                                    candidate_value=f"{candidate_ticks} arithmetic iterations")],
             metrics=[objective.metric],
             repetitions=3,
             timeout_seconds=60.0,
@@ -71,7 +76,8 @@ class EchoReasoningProvider(ReasoningProvider):
             code=self.synthetic_benchmark_code(metric=objective.metric, lever=lever),
             environment={},
             description=f"A/B experiment measuring {objective.metric} via {lever}",
-            parameters={},
+            parameters={"baseline_ticks": _TICKS[lever][0], "candidate_ticks": _TICKS[lever][1],
+                        "samples_per_process": 3},
         )
 
     def _analysis(self, context: dict[str, str]) -> AnalysisOutput:

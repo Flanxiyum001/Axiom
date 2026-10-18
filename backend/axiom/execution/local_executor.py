@@ -2,7 +2,7 @@
 
 Isolation and safety properties:
 - Experiment code is written to a fresh temporary directory per run and
-  executed with cwd set there; it never receives host filesystem paths.
+  executed with cwd set there. Host filesystem/network access is not isolated.
 - A hard wall-clock timeout kills runaway runs (status=timeout).
 - POSIX resource limits (CPU seconds, address space, lowered priority) are
   applied best-effort via preexec_fn.
@@ -60,6 +60,7 @@ class LocalExecutor(ExperimentExecutor):
     def execute(self, spec: ExperimentSpec, timeout_seconds: float) -> ExperimentRun:
         run = ExperimentRun(
             experiment_id=spec.id,
+            workload_type=spec.workload_type,
             status=RunStatus.PENDING,
         )
         with tempfile.TemporaryDirectory(prefix="axiom-run-") as tmp:
@@ -82,6 +83,7 @@ class LocalExecutor(ExperimentExecutor):
                     env=env,
                     capture_output=True,
                     text=True,
+                    encoding="utf-8",
                     timeout=max(timeout_seconds, 0.1),
                     preexec_fn=preexec,
                     check=False,
@@ -124,6 +126,7 @@ class LocalExecutor(ExperimentExecutor):
                     manifest = {
                         "run_id": run.id,
                         "experiment_id": spec.id,
+                        "workload_type": spec.workload_type,
                         "status": run.status.value,
                         "exit_code": run.exit_code,
                         "elapsed_seconds": round(elapsed, 3),
@@ -144,7 +147,7 @@ class LocalExecutor(ExperimentExecutor):
     def _build_env(self, spec: ExperimentSpec) -> dict[str, str]:
         """Minimal, controlled environment for the child process.
 
-        Arbitrary host filesystem access is not exposed: the child gets PATH,
+        This does not restrict host filesystem access. The child gets PATH,
         PYTHONHASHSEED (fixed for reproducibility) and the spec's declared
         environment plus Axiom-provided context variables only.
         """
@@ -152,6 +155,7 @@ class LocalExecutor(ExperimentExecutor):
             "PATH": os.environ.get("PATH", "/usr/bin:/bin"),
             "PYTHONHASHSEED": "0",
             "PYTHONDONTWRITEBYTECODE": "1",
+            "PYTHONIOENCODING": "utf-8",
             "AXIOM_EXPERIMENT_ID": spec.id,
             "AXIOM_PLAN_ID": spec.plan_id,
             "AXIOM_RUN_ID": "",  # patched by orchestrator if needed
