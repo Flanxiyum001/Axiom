@@ -88,7 +88,7 @@ reasoning call only. The Echo demo's CPU arithmetic is synthetic and is not
 evidence of model-inference speedup, quantization, multithreading, or GPU
 performance.
 
-Never put credentials in `NEXT_PUBLIC_*` variables or frontend files. Only the API base URL belongs in `NEXT_PUBLIC_AXIOM_API_URL`. For another frontend origin, configure backend `AXIOM_CORS_ORIGINS` as a comma-separated list of exact origins.
+Never put credentials in `NEXT_PUBLIC_*` variables or frontend files. Only the API base URL belongs in `NEXT_PUBLIC_AXIOM_API_URL`. For another frontend origin, configure backend `AXIOM_CORS_ORIGINS` as a comma-separated list of exact origins. For a constrained judge-facing test build, follow the [fixed synthetic CPU demo guide](docs/judge-demo.md); never publish the ordinary local executor API.
 
 ## Verification
 

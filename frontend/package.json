@@ -10,7 +10,8 @@
     "build": "next build",
     "start": "next start",
     "test": "node --test lib/provenance.test.mjs",
-    "test:smoke": "playwright test"
+    "test:smoke": "playwright test",
+    "test:smoke:demo": "playwright test --config playwright.demo.config.mjs"
   },
   "dependencies": {
     "next": "16.4.0",

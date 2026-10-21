@@ -8,6 +8,7 @@ function canonicalLever(value) {
   if (/\bbatch(?:ing| size)?\b/.test(normalized)) found.push("batch_size");
   if (/\bthreads?\b/.test(normalized)) found.push("threads");
   if (/precision|fp16|fp32|int8|quantiz/.test(normalized)) found.push("precision");
+  if (/\b(?:cpu )?work units\b/.test(normalized)) found.push("cpu_work_units");
   return found.length === 1 ? found[0] : null;
 }
 
