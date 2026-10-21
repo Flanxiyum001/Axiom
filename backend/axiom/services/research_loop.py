@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-from pydantic import BaseModel, Field
-
 from axiom.agents.analyst import AnalystAgent
 from axiom.agents.planner import PlannerAgent, _lever_from_statement
 from axiom.agents.researcher import ResearcherAgent
@@ -14,8 +12,6 @@ from axiom.domain.interfaces import (
     ReasoningProvider,
 )
 from axiom.domain.models import (
-    ExperimentSpec,
-    Hypothesis,
     LoopSummary,
     ResearchObjective,
     RunStatus,
@@ -26,6 +22,7 @@ from axiom.execution.evaluator import DeterministicEvaluator
 from axiom.execution.local_executor import LocalExecutor
 from axiom.memory.sqlite_repo import SqliteRepository
 from axiom.providers.echo_provider import EchoReasoningProvider
+from pydantic import BaseModel, Field
 
 
 class ResearchLoopConfig(BaseModel):
@@ -60,7 +57,15 @@ class LoopServices:
     @classmethod
     def from_settings(cls, settings: Settings) -> LoopServices:
         # Select the appropriate reasoning provider based on configuration.
-        if settings.reasoning_provider == "echo":
+        if settings.demo_mode:
+            from axiom.demo import (
+                DemoEchoReasoningProvider,
+                validate_demo_configuration,
+            )
+
+            validate_demo_configuration(settings)
+            provider = DemoEchoReasoningProvider()
+        elif settings.reasoning_provider == "echo":
             provider = EchoReasoningProvider()
         elif settings.reasoning_provider == "nebius":
             # Import lazily to avoid hard dependency when not used.
@@ -75,10 +80,19 @@ class LoopServices:
         else:
             raise RuntimeError(f"Unsupported reasoning provider: {settings.reasoning_provider}")
 
-        artifact_store = LocalArtifactStore(root=settings.artifact_root)
+        if settings.demo_mode:
+            from axiom.demo import DemoNoArtifactStore
+
+            artifact_store = DemoNoArtifactStore()
+        else:
+            artifact_store = LocalArtifactStore(root=settings.artifact_root)
 
         # Select the appropriate executor backend based on configuration.
-        if settings.executor_backend == "local":
+        if settings.demo_mode:
+            from axiom.demo import FixedSyntheticDemoExecutor
+
+            executor = FixedSyntheticDemoExecutor()
+        elif settings.executor_backend == "local":
             executor = LocalExecutor(artifact_store=artifact_store)
         elif settings.executor_backend == "nebius_gpu":
             from axiom.execution.nebius_cloud_job_client import RealNebiusJobClient
@@ -96,10 +110,17 @@ class LoopServices:
         else:
             raise RuntimeError(f"Unsupported executor backend: {settings.executor_backend}")
 
+        if settings.demo_mode:
+            from axiom.demo import DemoPlanner
+
+            planner = DemoPlanner(provider)
+        else:
+            planner = PlannerAgent(provider)
+
         return cls(
             provider=provider,
             researcher=ResearcherAgent(provider),
-            planner=PlannerAgent(provider),
+            planner=planner,
             analyst=AnalystAgent(provider),
             executor=executor,
             evaluator=DeterministicEvaluator(),

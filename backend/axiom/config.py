@@ -7,6 +7,7 @@ from pydantic import BaseModel, Field
 
 class Settings(BaseModel):
     app_name: str = "AXIOM"
+    demo_mode: bool = False
     reasoning_provider: str = Field(default="echo")
     executor_backend: str = Field(default="local")
     max_iterations: int = Field(default=5, ge=1, le=100)
@@ -37,6 +38,9 @@ class Settings(BaseModel):
 
     def __init__(self, **data: object) -> None:
         env_data: dict[str, object] = {}
+
+        if "demo_mode" not in data and os.environ.get("AXIOM_DEMO_MODE"):
+            env_data["demo_mode"] = os.environ["AXIOM_DEMO_MODE"]
 
         # Canonical API name first; keep the older documented variable as a
         # compatibility alias. The legacy value "mock" maps to the canonical

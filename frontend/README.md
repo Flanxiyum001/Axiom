@@ -41,6 +41,10 @@ NEBIUS_MODEL=nvidia/nemotron-3-super-120b-a12b
 
 Never commit .env or put credentials in a NEXT_PUBLIC variable. The frontend does not need the API key; it only calls the backend.
 
+## Constrained judge demo
+
+The separate [judge demo guide](../docs/judge-demo.md) describes the opt-in fixed synthetic CPU mode, build-time browser settings, backend guardrails, and hosting requirements. Set `NEXT_PUBLIC_AXIOM_DEMO_MODE=1` only when building against a backend that reports `demo_mode: true`; the dashboard refuses a mismatch. No live Nemotron request or generated experiment code runs in that mode. The default local dashboard remains Echo with the trusted local executor.
+
 ## CORS
 
 The backend allows two local dashboard origins by default: http://localhost:3000 and http://127.0.0.1:3000. For deployment, set AXIOM_CORS_ORIGINS to a comma-separated list of exact trusted frontend origins, for example:

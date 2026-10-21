@@ -5,6 +5,8 @@ import { deriveProvenance } from "../lib/provenance.mjs";
 
 const DEFAULT_API_URL =
   process.env.NEXT_PUBLIC_AXIOM_API_URL || "http://127.0.0.1:8000";
+const EXPECT_DEMO_MODE = process.env.NEXT_PUBLIC_AXIOM_DEMO_MODE === "1";
+const DEMO_OBJECTIVE = "Reduce model inference latency by 20%";
 
 function formatDate(value) {
   if (!value) return "Not recorded";
@@ -28,6 +30,7 @@ export default function DashboardPage() {
   const [apiBase, setApiBase] = useState(DEFAULT_API_URL);
   const [connection, setConnection] = useState("checking");
   const [provider, setProvider] = useState("unknown");
+  const [demoMode, setDemoMode] = useState(EXPECT_DEMO_MODE);
   const [objectives, setObjectives] = useState([]);
   const [activeId, setActiveId] = useState(null);
   const [history, setHistory] = useState([]);
@@ -100,7 +103,15 @@ export default function DashboardPage() {
     setError("");
     try {
       const health = await request("/health");
+      if (EXPECT_DEMO_MODE && health.demo_mode !== true) {
+        throw new Error("The configured API is not running the fixed judge demo mode.");
+      }
       setProvider(health.provider || "unknown");
+      setDemoMode(health.demo_mode === true);
+      if (health.demo_mode === true) {
+        setDescription(DEMO_OBJECTIVE);
+        setIterations("1");
+      }
       setConnection("connected");
       try {
         await refreshObjectives();
@@ -264,7 +275,7 @@ export default function DashboardPage() {
             <span className={"provider-dot " + (providerIsLive ? "provider-live" : "")} />
             <span>{provider === "unknown" ? "Not detected" : provider}</span>
           </div>
-          {!providerIsLive && (
+          {!providerIsLive && !demoMode && (
             <p className="provider-hint">
               The backend is not reporting the Nebius provider. Set
               AXIOM_REASONING_PROVIDER=nebius in the backend environment for live Nemotron reasoning.
@@ -300,6 +311,12 @@ export default function DashboardPage() {
         </header>
 
         <div className="page-content">
+          {demoMode && (
+            <div className="demo-banner" role="note" data-testid="demo-banner">
+              <strong>Fixed synthetic CPU demo</strong>
+              <span>Echo reasoning only. This run times a small, fixed arithmetic task on the demo host. It does not measure model inference, GPU performance, quantization, or multithreading.</span>
+            </div>
+          )}
           <section className="hero">
             <div className="eyebrow"><span className="eyebrow-line" /> AUTONOMOUS EXPERIMENTATION</div>
             <h1>Turn a question into <em>evidence.</em></h1>
@@ -326,7 +343,9 @@ export default function DashboardPage() {
                 {connection === "connected" ? "Reachable" : connection === "checking" ? "Checking" : "Needs attention"}
               </span>
             </div>
-            <form className="api-form" onSubmit={handleConnect}>
+            {demoMode ? (
+              <p className="field-hint">This demo uses its configured API endpoint: {normalizedBase}</p>
+            ) : <form className="api-form" onSubmit={handleConnect}>
               <label className="visually-hidden" htmlFor="api-url">AXIOM API URL</label>
               <input
                 id="api-url"
@@ -346,11 +365,11 @@ export default function DashboardPage() {
               >
                 Recheck
               </button>
-            </form>
-            <p className="field-hint">
+            </form>}
+            {!demoMode && <p className="field-hint">
               Local default: start the API with <code>uvicorn backend.main:app --reload</code>.
               For a deployed frontend, configure AXIOM_CORS_ORIGINS on the backend.
-            </p>
+            </p>}
           </section>
 
           {error && (
@@ -376,7 +395,7 @@ export default function DashboardPage() {
                 <span className="step-number">01</span>
               </div>
               <p className="panel-intro">
-                Describe the improvement you want to investigate in plain language.
+                {demoMode ? "The public demo accepts this one fixed objective." : "Describe the improvement you want to investigate in plain language."}
               </p>
               <form className="objective-form" onSubmit={handleCreate}>
                 <label htmlFor="objective-description">What should AXIOM investigate?</label>
@@ -384,6 +403,7 @@ export default function DashboardPage() {
                   id="objective-description"
                   value={description}
                   onChange={(event) => setDescription(event.target.value)}
+                  readOnly={demoMode}
                   placeholder="Example: Reduce model inference latency by 20% without lowering accuracy"
                   minLength={3}
                   maxLength={1000}
@@ -391,7 +411,7 @@ export default function DashboardPage() {
                   required
                 />
                 <div className="form-footer">
-                  <span>{description.length}/1000 characters</span>
+                  <span>{demoMode ? "Fixed demo input" : `${description.length}/1000 characters`}</span>
                   <button className="button button-primary" type="submit" disabled={busy !== "" || connection !== "connected" || description.trim().length < 3}>
                     {busy === "create" ? "Creating…" : "Create objective"}
                     <span aria-hidden="true">↗</span>
@@ -479,8 +499,8 @@ export default function DashboardPage() {
                         disabled={busy !== ""}
                       >
                         <option value="1">1 iteration · recommended</option>
-                        <option value="2">2 iterations</option>
-                        <option value="3">3 iterations</option>
+                        {!demoMode && <option value="2">2 iterations</option>}
+                        {!demoMode && <option value="3">3 iterations</option>}
                       </select>
                       <button
                         className="button button-primary"
@@ -493,7 +513,9 @@ export default function DashboardPage() {
                       </button>
                     </div>
                     <p className="field-hint">
-                      A run calls the configured reasoning provider. Multiple iterations may consume more API quota.
+                      {demoMode
+                        ? "One run per objective. Echo prepares the hypothesis and plan; the fixed CPU adapter measures three baseline and three candidate samples."
+                        : "A run calls the configured reasoning provider. Multiple iterations may consume more API quota."}
                     </p>
                   </div>
 
@@ -502,10 +524,10 @@ export default function DashboardPage() {
                       <div className="result-heading">
                         <div>
                           <div className="section-kicker">LATEST RESULT</div>
-                          <h3>{scriptTargetReached ? "Script metric target reached" : "Evidence collected"}</h3>
+                          <h3>{scriptTargetReached ? (demoMode ? "Synthetic CPU task target reached" : "Script metric target reached") : "Evidence collected"}</h3>
                         </div>
                         <span className={"pill " + (scriptTargetReached && syntheticInterventionSupported ? "pill-success" : "pill-neutral")}>
-                          {scriptTargetReached ? targetStatus : selectedRun.stopped ? readable(selectedRun.stop_reason || "completed") : "Reviewed"}
+                          {scriptTargetReached ? (demoMode ? "Fixed synthetic CPU target met" : targetStatus) : selectedRun.stopped ? readable(selectedRun.stop_reason || "completed") : "Reviewed"}
                         </span>
                       </div>
 

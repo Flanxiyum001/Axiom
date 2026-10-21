@@ -2,6 +2,8 @@
 
 import os
 
+from axiom.api.demo_guard import DemoBodyLimitMiddleware
+from axiom.demo import validate_demo_configuration
 from dotenv import load_dotenv
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -28,7 +30,16 @@ def _cors_origins_from_env() -> list[str]:
 load_dotenv(override=False)
 
 settings = Settings()
-app = FastAPI(title=settings.app_name)
+if settings.demo_mode:
+    validate_demo_configuration(settings)
+app = FastAPI(
+    title=settings.app_name,
+    docs_url=None if settings.demo_mode else "/docs",
+    redoc_url=None if settings.demo_mode else "/redoc",
+    openapi_url=None if settings.demo_mode else "/openapi.json",
+)
+if settings.demo_mode:
+    app.add_middleware(DemoBodyLimitMiddleware)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=_cors_origins_from_env(),

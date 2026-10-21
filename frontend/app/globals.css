@@ -61,6 +61,8 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 .status-checking { background: #e8c77a; }
 .status-offline { background: #fa8c80; }
 .page-content { width: 100%; max-width: 1600px; margin: 0 auto; padding: 0 42px 26px; }
+.demo-banner { display: flex; flex-direction: column; gap: 4px; margin-top: 22px; padding: 12px 15px; border: 1px solid #5b6d3c; border-radius: 8px; background: #1d2818; color: #dcebc6; font-size: 12px; }
+.demo-banner strong { color: var(--accent); }
 .hero { padding: 47px 0 30px; }
 .eyebrow { display: flex; align-items: center; gap: 9px; color: var(--accent); }
 .eyebrow-line { width: 19px; height: 1px; background: var(--accent); }
