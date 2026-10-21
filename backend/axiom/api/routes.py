@@ -25,7 +25,7 @@ logger = logging.getLogger("axiom.api")
 
 
 class CreateObjectiveRequest(BaseModel):
-    description: str = Field(min_length=3, max_length=1000, examples=[DEMO_OBJECTIVE])
+    description: str = Field(min_length=3, examples=[DEMO_OBJECTIVE])
     max_iterations: int | None = Field(default=None, ge=1, le=100)
 
 
