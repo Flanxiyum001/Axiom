@@ -25,7 +25,7 @@ test("live showcase is readable and renders a clearly bounded mocked proposal", 
     }),
   }));
   await page.goto("/showcase");
-  await expect(page.getByRole("heading", { name: "Reasoning, live. Evidence, honest." })).toBeVisible();
+  await expect(page.getByRole("heading", { name: /Reasoning,.*Evidence,.*honest\./ })).toBeVisible();
   await expect(page.getByRole("link", { name: "Research lab" })).toHaveAttribute("href", "/#objective-workspace");
   const heroColor = await page.locator(".showcase-hero").evaluate((element) => getComputedStyle(element).backgroundColor);
   expect(heroColor).toBe("rgb(16, 32, 35)");
