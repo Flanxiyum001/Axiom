@@ -328,6 +328,9 @@ export default function DashboardPage() {
                 From a question to a hypothesis, a controlled run, and a conclusion you can actually inspect.
               </p>
               <a className="hero-cta" href="#objective-workspace">Start an experiment <span aria-hidden="true">↗</span></a>
+              <p className="showcase-entry-link">
+                Or explore <a href="/showcase">live Nemotron reasoning ↗</a> — an AI-generated proposal, not an executed benchmark.
+              </p>
               <div className="hero-meta">
                 <span><strong>01</strong> QUESTION</span><i />
                 <span><strong>02</strong> EXPERIMENT</span><i />
