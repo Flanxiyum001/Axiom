@@ -8,6 +8,7 @@ import {
   buildNemotronRequest,
   parseNemotronContent,
   verifyNemotronModel,
+  isCrossSiteShowcaseRequest,
 } from "./nemotron-showcase.mjs";
 
 const valid = {
@@ -54,4 +55,11 @@ test("rejects missing or mismatched response model attribution", () => {
   assert.equal(verifyNemotronModel(MODEL), MODEL);
   assert.throws(() => verifyNemotronModel(undefined), /unexpected or missing model/);
   assert.throws(() => verifyNemotronModel("some-other-model"), /unexpected or missing model/);
+});
+
+test("rejects cross-site browser request metadata without blocking same-origin calls", () => {
+  assert.equal(isCrossSiteShowcaseRequest(new Headers({ "sec-fetch-site": "cross-site" })), true);
+  assert.equal(isCrossSiteShowcaseRequest(new Headers({ "sec-fetch-site": "same-origin" })), false);
+  assert.equal(isCrossSiteShowcaseRequest(new Headers({ "sec-fetch-site": "none" })), false);
+  assert.equal(isCrossSiteShowcaseRequest(new Headers()), false);
 });
