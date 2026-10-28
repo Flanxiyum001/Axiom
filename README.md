@@ -4,6 +4,16 @@ AXIOM turns an objective into a hypothesis, controlled experiment plan, executab
 
 **What works today:** Echo provides offline reasoning; Nebius/Nemotron can provide live reasoning. The dashboard planner generates **synthetic CPU workloads**, not real model-inference benchmarks. Echo's candidate reduces arithmetic loop iterations. A label such as `threads` or `precision` names a simulated intervention; it does not demonstrate threading, quantization, GPU throughput, or a model latency improvement.
 
+## Judge-facing hosted demo (28 October 2026)
+
+- [Research laboratory / synthetic objective workspace](https://axiom-frontend-demo.up.railway.app/#objective-workspace) — fixed Echo reasoning and a bounded **synthetic CPU** workload through the private FastAPI backend.
+- [Live Nemotron proposal showcase](https://axiom-frontend-demo.up.railway.app/showcase) — server-side, bounded Nebius Token Factory request to NVIDIA Nemotron 3 Super; **proposal only, no experiment executed**.
+- [Demo landing page](https://axiom-frontend-demo.up.railway.app/) — introduces the question → experiment → evidence workflow.
+
+Railway deployment records on 28 October showed successful frontend/backend deployments. Frontend HTTP logs include successful health, create, run, history, and showcase page requests. These records are not substitutes for a fresh end-to-end judge browser check. The synthetic workflow and live model proposal are two **separate** demonstrations; they are not a live Nemotron-driven GPU optimization loop.
+
+The judge demo uses a private Railway backend and a narrowly allowlisted same-origin API proxy. The frontend holds any Nebius key only in its **server-side** runtime environment for the showcase route; never add the key to a `NEXT_PUBLIC_*` variable. See [judge demo safeguards](docs/judge-demo.md), [submission text](docs/hackathon-submission.md), and [recording script](docs/demo-walkthrough.md).
+
 ## Fresh setup
 
 Use Python **3.11 or 3.12** and Node.js **22**, matching CI. From the repository root:
