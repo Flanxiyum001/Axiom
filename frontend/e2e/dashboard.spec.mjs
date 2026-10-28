@@ -11,7 +11,7 @@ test("dashboard runs an offline objective and restores provenance from API histo
   await page.goto("/");
   await expect(page.getByText("API connected", { exact: true })).toBeVisible();
   if (process.env.AXIOM_CAPTURE_VISUALS === "1") {
-    await page.screenshot({ path: "test-results/axiom-hero-desktop.png" });
+    await page.screenshot({ path: "test-results/axiom-hero-desktop.png", animations: "disabled" });
   }
   await expect(page.locator(".provider-line")).toHaveText("echo");
   await page.getByLabel("What should AXIOM investigate?").fill("Reduce model inference latency by 20%");
@@ -53,9 +53,9 @@ test("dashboard runs an offline objective and restores provenance from API histo
   await expect(page.locator(".evidence-card")).toContainText(summary.evidence.conclusion);
   await expect(page.getByText("1 recorded experiment iteration", { exact: true })).toBeVisible();
   if (process.env.AXIOM_CAPTURE_VISUALS === "1") {
-    await page.screenshot({ path: "test-results/axiom-evidence-desktop.png", fullPage: true });
+    await page.locator(".workspace-grid").screenshot({ path: "test-results/axiom-evidence-desktop.png", animations: "disabled" });
     await page.setViewportSize({ width: 390, height: 844 });
-    await page.screenshot({ path: "test-results/axiom-evidence-mobile.png", fullPage: true });
+    await page.screenshot({ path: "test-results/axiom-evidence-mobile.png", fullPage: true, animations: "disabled" });
   }
   expect(errors).toEqual([]);
 });
