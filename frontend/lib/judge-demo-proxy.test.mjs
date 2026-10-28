@@ -39,6 +39,7 @@ test("proxies allowed health request to the private Railway backend without cach
   assert.equal(calls[0].url, backend + "/health");
   assert.equal(calls[0].options.method, "GET");
   assert.equal(calls[0].options.redirect, "error");
+  assert.equal(calls[0].options.headers["x-axiom-client-ip"], "203.0.113.8");
 });
 
 test("does not expose unsupported backend routes such as one-shot research", async () => {
