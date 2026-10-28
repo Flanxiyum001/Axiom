@@ -1,33 +1,74 @@
-# Constrained judge demo: deployment preparation
+# Constrained judge demo: Railway deployment guide
 
-This mode is an opt-in test build for a **fixed synthetic CPU demonstration**. It is not deployed by this repository. The recorded measurements come from arithmetic loops actually timed on the demo host; values vary with machine load. They do not measure Nemotron inference, GPU performance, quantization, or multithreading. Echo supplies deterministic hypothesis/plan/analysis structure. No Token Factory request is made by the demo.
+This is an opt-in **fixed synthetic CPU demonstration**. Echo supplies the hypothesis, plan, and analysis structure. The demo times a compiled-in arithmetic loop on the demo host; values vary with host load. It does not measure Nemotron inference, GPU performance, quantization, or multithreading. No Token Factory request is made by the public demo. The earlier one-request Nemotron smoke result is separate evidence.
 
-## Boundary and audit
+## Deployment shape: public frontend, private backend
 
-The ordinary `/objectives/{id}/run` route reaches `LocalExecutor`, which executes spec Python in a subprocess. Its AST validator and resource limits are not a secure sandbox. Do not publish the ordinary backend. The frontend's CORS setting does not authenticate an API.
+Deploy two services from this repository into the **same Railway project and environment**:
 
-With `AXIOM_DEMO_MODE=1`, startup requires Echo, the local backend selection, `AXIOM_DB_PATH=:memory:`, and no Nebius or storage credentials. The service constructs `FixedSyntheticDemoExecutor` instead of `LocalExecutor` or the GPU adapter. Its only work is a compiled-in arithmetic loop with fixed baseline/candidate counts; it checks the known spec marker and ignores executable spec code. Artifact access also fails closed. There is no fallback to a configured live provider or unrestricted executor. The existing trusted local workflow remains available with demo mode off.
+- **Frontend**: root directory `/frontend`, Next.js service with the only public Railway domain.
+- **Backend**: repository root `/`, FastAPI service listening on port `8000`. Do **not** generate a public domain for it. Set its private networking endpoint to `axiom-backend`, so the internal address is `http://axiom-backend.railway.internal:8000`.
 
-The public API accepts only `Reduce model inference latency by 20%`, one iteration, and one run per objective. One API process allows one active run, at most 100 objectives, 6 mutations per client and 30 total mutations per minute, and 2 KiB POST bodies. `/research` is disabled; API docs are hidden. These are process-local limits, not a substitute for ingress controls. History is shared among visitors and vanishes when the process restarts; do not enter private information.
+The browser must never call the backend's public address. The browser uses the same-origin path `/api`; the Next.js route handler forwards only a short allowlist of health/objective/history/run calls to the private backend. It rejects unsupported paths, enforces request-size and per-process rate limits, uses a timeout, disables redirects, limits response size, and returns sanitized gateway errors. Do not add a general-purpose URL proxy.
 
-## Environment and launch shape
+### Frontend Railway variables
 
-Use [.env.judge-demo.example](../.env.judge-demo.example) for backend variables and [frontend/.env.judge-demo.example](../frontend/.env.judge-demo.example) for browser build variables. Only an API URL belongs in `NEXT_PUBLIC_AXIOM_API_URL`. Set `NEXT_PUBLIC_AXIOM_DEMO_MODE=1`; the browser refuses a backend whose `/health` does not report `demo_mode: true`. The backend guard is independent of this browser check.
+Set these on the frontend service. `NEXT_PUBLIC_*` values are baked into the browser build; the internal backend URL is server-side only.
 
-Before exposing a URL, the owner must choose a host and place the two processes behind HTTPS ingress. Run the backend as an unprivileged, disposable process/container with **one worker**, a read-only application filesystem where practical, no cloud credentials, no access to trusted local files or databases, and outbound network blocked. Keep its separate in-memory database and any transient files away from trusted development data. Set `PYTHON_DOTENV_DISABLED=1` in the backend process environment **before** Python starts. Do not mount a developer `.env`. Start Uvicorn without `--reload` or extra workers, and set `AXIOM_CORS_ORIGINS` to the exact HTTPS frontend origin. Set the frontend's `NEXT_PUBLIC_AXIOM_API_URL` to the actual constrained backend origin at build time. No host, provider, or URL is selected here.
+```dotenv
+NEXT_PUBLIC_AXIOM_DEMO_MODE=1
+NEXT_PUBLIC_AXIOM_API_URL=/api
+AXIOM_BACKEND_INTERNAL_URL=http://axiom-backend.railway.internal:8000
+```
 
-At the trusted HTTPS ingress, apply request rate and body-size limits to **all** routes, connection and request timeouts, and a cap on concurrent connections. The built-in limits cover mutation routes in one process; they do not cover GET flooding, multiple workers/replicas, or a hostile network. The owner should verify the platform's own resource and network policies before giving judges the URL.
+### Backend Railway variables
 
-## Credential-free verification before sharing
+Set these only on the backend service:
 
-1. Inspect the backend environment and confirm the safe values above. Do not print environment dumps or secrets. Confirm it has no Nebius credentials and no mounted trusted data.
-2. Check `/health`: it must report `provider: "echo"`, `demo_mode: true`, and `workload: "fixed_synthetic_cpu"`. If it does not, stop the rollout.
-3. From a fresh browser, create the displayed fixed objective, run one iteration, inspect the hypothesis, plan, actual baseline/candidate `latency_ms` samples, provenance, conclusion, and reloaded history. Do not expect a particular timing or a guaranteed target result.
-4. Confirm another objective, a second run of the same objective, an iteration count above one, `/research`, and an oversized POST are rejected. Confirm the browser shows the synthetic CPU label and does not reveal a credential.
-5. Independently check the public URL, TLS, ingress limits, and logs from outside the hosting account. This repository's tests cannot establish those properties.
+```dotenv
+PYTHON_DOTENV_DISABLED=1
+AXIOM_DEMO_MODE=1
+AXIOM_REASONING_PROVIDER=echo
+AXIOM_EXECUTOR_BACKEND=local
+AXIOM_DB_PATH=:memory:
+AXIOM_MAX_ITERATIONS=1
+AXIOM_RUN_TIMEOUT_SECONDS=10
+PORT=8000
+AXIOM_CORS_ORIGINS=
+```
 
-To shut down after judging, remove the public ingress route, stop both processes, delete their disposable logs according to the host policy, and remove the demo environment and any temporary hosting credentials. The in-memory history disappears when the backend stops. No Nebius API key is needed or permitted in this demo process.
+Do not add Nebius, storage, cloud, or other provider credentials to either service. Do not mount the developer's local `.env`. Run the backend with one worker and no auto-reload:
 
-## Remaining submission limit
+```sh
+python -m uvicorn backend.main:app --host 0.0.0.0 --port 8000 --workers 1
+```
 
-The safe test build shows AXIOM's objective → hypothesis → controlled synthetic measurement → deterministic comparison → provenance → conclusion workflow. It does **not** supply a judge-accessible URL by itself, nor does it demonstrate a live Nemotron research run. The earlier provider-only Token Factory smoke is separate evidence. The owner must authorize and verify hosting, then decide how to present both pieces of evidence honestly in the submission.
+Build the frontend from `/frontend` with `npm install --no-audit --no-fund`, `npm run build`, then start with `npm run start -- --hostname 0.0.0.0 --port ${PORT}`. Use one replica for each service during judging. Keep the backend's internal address private and verify that the backend service has **no public domain**. This also means CORS is not the security boundary: the browser speaks only to the public frontend.
+
+## Execution and network boundaries
+
+The ordinary local workflow can execute generated spec Python through `LocalExecutor`; its AST checks and subprocess limits are **not a secure sandbox**. Never expose the ordinary backend publicly.
+
+With `AXIOM_DEMO_MODE=1`, startup requires Echo, local executor selection, an in-memory DB, and no Nebius or storage credentials. The app constructs `FixedSyntheticDemoExecutor`, which validates a fixed spec marker and ignores executable spec code. It runs only a built-in arithmetic loop. Artifact access is disabled. `/research`, API documentation, arbitrary objectives, multiple iterations, and duplicate runs are disabled.
+
+**Railway caveat:** Railway's current networking documentation does not provide a general deny-all outbound firewall rule for application services. The architecture here therefore does not claim OS-level egress isolation. Its intended public path has no generated-code execution, user-controlled URL fetch, live provider request, or cloud credentials; the backend remains private. If a host-level outbound-deny policy is required by your threat model, use a host/network setup that can enforce it before sharing the demo. Do not repurpose this configuration for arbitrary code execution or untrusted workloads.
+
+The proxy allows only the intended demo API routes, rejects query-string routing, limits request bodies to 2 KiB and responses to 512 KiB, applies process-local request/mutation caps, and times out upstream calls. The backend itself caps objective creation, mutation volume, and concurrent runs. These application limits are not a substitute for upstream protection against a large HTTP flood. Configure any ingress/edge limits available on your chosen plan and keep the demo temporary. Do not enter private data; saved demo history is shared among visitors and disappears when the in-memory backend restarts.
+
+## Verification before sharing the frontend URL
+
+1. Check the Railway backend settings: one replica/worker, port 8000, no public domain, no credentials, no persistent volume, and `PYTHON_DOTENV_DISABLED=1` set before Python starts.
+2. Check backend private connectivity from the frontend service. The frontend variable must point to `http://axiom-backend.railway.internal:8000`; do not swap it for a public backend URL.
+3. Open the **frontend's HTTPS URL** in a fresh browser. `/api/health` must report `provider: "echo"`, `demo_mode: true`, and `workload: "fixed_synthetic_cpu"`.
+4. Create the displayed objective, run one iteration, inspect hypothesis, plan, actual baseline/candidate timings, provenance, conclusion, and history after refresh. Do not expect fixed timings or guaranteed target attainment.
+5. Confirm unsupported proxy paths such as `/api/research` are rejected, an oversized POST is rejected, a second run is rejected, and request limits return a safe error. Check browser devtools: API calls must go to the frontend's same-origin `/api` path, never a public backend URL.
+6. From outside Railway, verify HTTPS and the public frontend URL. In Railway, independently verify the backend domain list is empty and the frontend backend variable is the private address. Check sanitized logs; never dump environment variables.
+7. If any of these checks fail, remove/disable the frontend's public domain and stop the rollout until fixed.
+
+## Shutdown after judging
+
+Remove the frontend's public domain or ingress route, stop the frontend and backend services, remove temporary variables and hosting resources, and handle logs according to the host's retention policy. In-memory experiment history disappears when the backend process stops. No Nebius key is needed in this demo.
+
+## Remaining limitation
+
+This provides a constrained, runnable UI workflow around a synthetic CPU measurement. It does not verify the full live Nemotron research loop, model-inference speedup, GPU execution, or GPU performance. A provider-only Nemotron smoke test is a separate result and should be described separately in the submission.
