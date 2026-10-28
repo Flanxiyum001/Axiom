@@ -24,7 +24,10 @@ test("live showcase is readable and renders a clearly bounded mocked proposal", 
       cached: false,
     }),
   }));
-  await page.goto("/showcase");
+  await page.goto("/");
+  const showcaseLink = page.getByRole("link", { name: /live Nemotron reasoning/ });
+  await expect(showcaseLink).toHaveAttribute("href", "/showcase");
+  await showcaseLink.click();
   await expect(page.getByRole("heading", { name: /Reasoning,.*Evidence,.*honest\./ })).toBeVisible();
   await expect(page.getByRole("link", { name: "Research lab" })).toHaveAttribute("href", "/#objective-workspace");
   const heroColor = await page.locator(".showcase-hero").evaluate((element) => getComputedStyle(element).backgroundColor);
