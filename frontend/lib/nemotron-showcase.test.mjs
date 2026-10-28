@@ -7,6 +7,7 @@ import {
   MODEL,
   buildNemotronRequest,
   parseNemotronContent,
+  verifyNemotronModel,
 } from "./nemotron-showcase.mjs";
 
 const valid = {
@@ -47,4 +48,10 @@ test("rejects missing or blank required fields", () => {
 
 test("rejects oversized field content", () => {
   assert.throws(() => parseNemotronContent(JSON.stringify({ ...valid, hypothesis: "x".repeat(1201) })), /output validation/);
+});
+
+test("rejects missing or mismatched response model attribution", () => {
+  assert.equal(verifyNemotronModel(MODEL), MODEL);
+  assert.throws(() => verifyNemotronModel(undefined), /unexpected or missing model/);
+  assert.throws(() => verifyNemotronModel("some-other-model"), /unexpected or missing model/);
 });
