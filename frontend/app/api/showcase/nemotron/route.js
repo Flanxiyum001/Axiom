@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { BASE_URL, MODEL, buildNemotronRequest, parseNemotronContent, verifyNemotronModel } from "../../../../lib/nemotron-showcase.mjs";
+import { BASE_URL, buildNemotronRequest, parseNemotronContent, verifyNemotronModel } from "../../../../lib/nemotron-showcase.mjs";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
