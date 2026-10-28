@@ -16,7 +16,11 @@ COPY experiments ./experiments
 COPY tests ./tests
 
 RUN python -m pip install --no-cache-dir --upgrade pip \
-    && python -m pip install --no-cache-dir .
+    && python -m pip install --no-cache-dir . \
+    && useradd --create-home --uid 10001 --shell /usr/sbin/nologin axiom \
+    && chown -R axiom:axiom /app
+
+USER axiom
 
 EXPOSE 8000
 
