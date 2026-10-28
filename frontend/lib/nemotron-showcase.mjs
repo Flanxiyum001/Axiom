@@ -25,6 +25,13 @@ export const FIXED_PROMPT = [
   "The limitation must state that this response is a plan, not a benchmark result.",
 ].join("\n");
 
+// Modern browsers send Fetch Metadata. Refuse cross-site browser-triggered
+// POSTs so a third-party page cannot casually consume the showcase's quota.
+// This is defense in depth, not authentication or global provider rate limiting.
+export function isCrossSiteShowcaseRequest(headers) {
+  return headers?.get?.("sec-fetch-site")?.toLowerCase() === "cross-site";
+}
+
 export function verifyNemotronModel(model) {
   if (model !== MODEL) {
     throw new Error("Nebius returned an unexpected or missing model identifier.");
