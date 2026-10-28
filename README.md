@@ -101,6 +101,19 @@ The public demo uses fixed Echo reasoning and a built-in synthetic CPU task. The
 - **Model integration:** NVIDIA Nemotron 3 Super through Nebius Token Factory
 - **Tests:** pytest, Node.js test runner, Playwright
 
+## Reproducible real-ML inference experiment
+
+AXIOM now includes an **optional local CPU benchmark** that uses scikit-learn's bundled handwritten-digits dataset and a real `StandardScaler + LogisticRegression` classifier. It compares per-row inference calls with one batched inference call using the same fitted model and test set. It checks prediction-label equivalence and reports repeated latency samples, median latency, throughput, accuracy, and environment details in JSON.
+
+This is a separate, reproducible experiment—not the hosted synthetic demo, not a GPU benchmark, and not yet an execution path orchestrated by Nemotron.
+
+```sh
+python -m pip install -e '.[ml-benchmark]'
+python -m experiments.real_inference_benchmark --repeats 10 --seed 42 --output artifacts/real-inference-benchmark.json
+```
+
+See [the benchmark protocol](docs/real-inference-benchmark.md) for the method and interpretation boundaries. Run it on the target machine and preserve its JSON report before quoting any measured result; a speedup is not guaranteed.
+
 ## Run locally
 
 ### Prerequisites
@@ -193,7 +206,7 @@ Tests verify behavior under their configured conditions. A mocked showcase test 
 
 ## Limitations and current status
 
-- **No real ML/GPU benchmark:** hosted execution uses synthetic CPU arithmetic.
+- **Hosted demo remains synthetic:** its execution workload uses CPU arithmetic. A separate optional local scikit-learn classifier benchmark now measures real CPU ML inference; it is not a GPU benchmark and is not integrated into the hosted research loop.
 - **No verified optimization claim:** no measured model-inference or TensorRT speedup is established.
 - **No secure hostile-code sandbox:** local subprocess execution is for trusted development.
 - **No independent metric attestation:** script-reported JSON values may be misleading.
@@ -217,7 +230,7 @@ Tests verify behavior under their configured conditions. A mocked showcase test 
 
 ## Further reading
 
-- [Pipeline assessment](docs/pipeline-audit.md) — measurement caveats and evaluator behavior
+- [Real-ML inference benchmark](docs/real-inference-benchmark.md) — reproducible CPU measurement protocol\n- [Pipeline assessment](docs/pipeline-audit.md) — measurement caveats and evaluator behavior
 - [Experiment-layer guide](docs/experiment-layer.md) — execution and extension points
 - [Judge demo notes](docs/judge-demo.md) — hosted demo boundaries
 - [Hackathon submission draft](docs/hackathon-submission.md) — submission fields and remaining actions
