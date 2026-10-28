@@ -10,6 +10,9 @@ test("dashboard runs an offline objective and restores provenance from API histo
   });
   await page.goto("/");
   await expect(page.getByText("API connected", { exact: true })).toBeVisible();
+  if (process.env.AXIOM_CAPTURE_VISUALS === "1") {
+    await page.screenshot({ path: "test-results/axiom-hero-desktop.png" });
+  }
   await expect(page.locator(".provider-line")).toHaveText("echo");
   await page.getByLabel("What should AXIOM investigate?").fill("Reduce model inference latency by 20%");
   await page.getByRole("button", { name: "Create objective" }).click();
@@ -49,6 +52,11 @@ test("dashboard runs an offline objective and restores provenance from API histo
   await expect(provenance).toContainText("Synthetic workload; not real model inference");
   await expect(page.locator(".evidence-card")).toContainText(summary.evidence.conclusion);
   await expect(page.getByText("1 recorded experiment iteration", { exact: true })).toBeVisible();
+  if (process.env.AXIOM_CAPTURE_VISUALS === "1") {
+    await page.screenshot({ path: "test-results/axiom-evidence-desktop.png", fullPage: true });
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.screenshot({ path: "test-results/axiom-evidence-mobile.png", fullPage: true });
+  }
   expect(errors).toEqual([]);
 });
 

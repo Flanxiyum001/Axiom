@@ -245,6 +245,7 @@ export default function DashboardPage() {
   }
 
   const providerIsLive = String(provider).toLowerCase() === "nebius";
+  const visualPhase = busy.startsWith("run:") ? "running" : selectedRun ? "complete" : "ready";
 
   return (
     <main className="app-shell">
@@ -334,18 +335,29 @@ export default function DashboardPage() {
                 <span><strong>03</strong> EVIDENCE</span>
               </div>
             </div>
-            <div className="hero-visual" aria-hidden="true">
+            <div className={"hero-visual phase-" + visualPhase} aria-hidden="true">
               <div className="visual-grid" />
-              <div className="visual-label visual-label-top">FIG. 01 <span>EXPERIMENTAL LOOP</span></div>
+              <div className="visual-sweep" />
+              <div className="visual-label visual-label-top">FIG. 01 <span>AXIOM / RESEARCH ENGINE</span></div>
+              <div className="orbit-ruler" />
               <div className="orbit orbit-outer" />
               <div className="orbit orbit-middle" />
               <div className="orbit orbit-inner" />
+              <div className="orbit-scan" />
+              <svg className="orbit-route" viewBox="0 0 520 422" preserveAspectRatio="xMidYMid meet" focusable="false">
+                <path className="route-underlay" d="M 108 128 C 159 48 335 26 404 132 S 443 338 307 359 S 72 308 108 128 Z" />
+                <path className="route-trace" d="M 108 128 C 159 48 335 26 404 132 S 443 338 307 359 S 72 308 108 128 Z" />
+              </svg>
               <div className="orbit-tick tick-one" /><div className="orbit-tick tick-two" /><div className="orbit-tick tick-three" />
-              <div className="orbit-core"><span className="core-cross">✳</span><span>AXIOM</span><small>RESEARCH ENGINE</small></div>
-              <div className="visual-coordinate coordinate-one">Q / 01</div>
-              <div className="visual-coordinate coordinate-two">E / 02</div>
-              <div className="visual-coordinate coordinate-three">R / 03</div>
-              <div className="visual-label visual-label-bottom"><span>OBSERVE → TEST → LEARN</span><span>∞ ITERATE</span></div>
+              <div className="orbit-core">
+                <span className="core-cross">✳</span>
+                <span>AXIOM</span>
+                <small>{visualPhase === "running" ? "RESEARCH IN PROGRESS" : visualPhase === "complete" ? "EVIDENCE RECORDED" : "AWAITING OBJECTIVE"}</small>
+              </div>
+              <div className="visual-coordinate coordinate-one"><b>01</b><span>QUESTION</span></div>
+              <div className="visual-coordinate coordinate-two"><b>02</b><span>EXPERIMENT</span></div>
+              <div className="visual-coordinate coordinate-three"><b>03</b><span>EVIDENCE</span></div>
+              <div className="visual-label visual-label-bottom"><span>OBSERVE → TEST → LEARN</span><span className="visual-live"><i />{visualPhase === "running" ? "RUNNING" : visualPhase === "complete" ? "RESULT READY" : "SYSTEM READY"}</span></div>
             </div>
           </section>
 
@@ -532,6 +544,12 @@ export default function DashboardPage() {
                         <span aria-hidden="true">↗</span>
                       </button>
                     </div>
+                    {busy === "run:" + activeObjective.id && (
+                      <div className="run-activity" role="status">
+                        <span className="run-activity-icon" aria-hidden="true" />
+                        <span><strong>Research loop underway</strong><small>Preparing a hypothesis, running the experiment, and evaluating evidence.</small></span>
+                      </div>
+                    )}
                     <p className="field-hint">
                       {demoMode
                         ? "One run per objective. Echo prepares the hypothesis and plan; the fixed CPU adapter measures three baseline and three candidate samples."
