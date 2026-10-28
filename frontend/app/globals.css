@@ -271,3 +271,79 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
   .result-heading { align-items: flex-start; flex-direction: column; }.result-heading .pill { white-space: normal; }.provenance-row { grid-template-columns: 1fr; gap: 2px; }.history-footer { align-items: flex-start; }.page-footer { line-height: 1.7; }
 }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; animation: none !important; transition: none !important; } }
+
+/* The control is shared by the lab and showcase. The document starts dark in the layout. */
+.theme-toggle { display: inline-flex; align-items: center; gap: 10px; flex: 0 0 auto; padding: 5px 0; border: 0; background: transparent; color: var(--muted); white-space: nowrap; }
+.theme-toggle-label { font: 700 9px/1 'Courier New', monospace; letter-spacing: 1.3px; }
+.theme-toggle-track { display: flex; align-items: center; width: 43px; height: 24px; padding: 3px; border-radius: 99px; border: 1px solid var(--line); background: #e1e6dc; transition: background .2s, border-color .2s; }
+.theme-toggle-thumb { display: grid; place-items: center; width: 18px; height: 18px; border-radius: 50%; background: #fffaf2; color: #b66445; font-size: 15px; line-height: 1; box-shadow: 0 1px 4px #0003; transition: transform .2s; }
+html[data-theme="dark"] {
+  --paper: #0c171a;
+  --surface: #142326;
+  --ink: #ecf2e9;
+  --night: #102023;
+  --night-soft: #1b3031;
+  --line: #2b4242;
+  --muted: #a6b9b1;
+  --soft: #8ca49d;
+  --accent: #ff9670;
+  --accent-dark: #ffad8c;
+  --success: #93dec0;
+  --danger: #ffa69c;
+  color-scheme: dark;
+}
+html[data-theme="dark"] .theme-toggle-track { background: #355c54; border-color: #6a9e85; }
+html[data-theme="dark"] .theme-toggle-thumb { transform: translateX(19px); background: #d7efdf; color: #1b4340; }
+html[data-theme="dark"] .topbar { background: #112023; }
+html[data-theme="dark"] .breadcrumb-divider, html[data-theme="dark"] .topbar-edition { color: #7f9991; }
+html[data-theme="dark"] .connection-status { color: #b2c7bd; }
+html[data-theme="dark"] .demo-banner { background: #322b21; border-color: #725b3d; color: #ebd8b8; }
+html[data-theme="dark"] .demo-banner strong { color: #ffbf82; }
+html[data-theme="dark"] .hero { box-shadow: 0 20px 55px #0005; }
+html[data-theme="dark"] .api-panel { background: #1a3030; border-color: #36534c; }
+html[data-theme="dark"] .pill-success { color: #b2edd0; background: #1d473c; border-color: #3e8267; }
+html[data-theme="dark"] .pill-neutral { color: #c2d1c8; background: #253a38; border-color: #45605a; }
+html[data-theme="dark"] .api-form input, html[data-theme="dark"] .objective-form textarea, html[data-theme="dark"] .run-controls select { background: #0e1c1f; color: var(--ink); border-color: #3c5954; }
+html[data-theme="dark"] .objective-form textarea::placeholder { color: #91a79d; }
+html[data-theme="dark"] .button-primary, html[data-theme="dark"] .button-secondary { color: #f4f5ed; background: #31534e; }
+html[data-theme="dark"] .button-primary:hover:not(:disabled), html[data-theme="dark"] .button-secondary:hover:not(:disabled) { background: #426b5f; }
+html[data-theme="dark"] .button-quiet { color: #c2e3d0; border-color: #4b7364; }
+html[data-theme="dark"] .button-quiet:hover:not(:disabled) { background: #29433c; border-color: #77ac8e; }
+html[data-theme="dark"] .field-hint { color: #9ab0a7; }
+html[data-theme="dark"] .field-hint code { color: #d0e9d7; background: #2a4240; }
+html[data-theme="dark"] .feedback-error { color: #ffc0b5; border-color: #95594e; background: #3b2929; }
+html[data-theme="dark"] .feedback-success { color: #b4ebca; border-color: #4e8265; background: #213c32; }
+html[data-theme="dark"] .feedback-help { color: #e4aa9d; }
+html[data-theme="dark"] .step-number { color: #668d7d; }
+html[data-theme="dark"] .objective-form label, html[data-theme="dark"] .run-controls label { color: #d2e1d6; }
+html[data-theme="dark"] .separator-label { color: #9bad9e; }
+html[data-theme="dark"] .objective-item { background: #192b2b; border-color: #314b45; }
+html[data-theme="dark"] .objective-item:hover { background: #243b37; border-color: #628d78; }
+html[data-theme="dark"] .objective-item-active { background: #29433b; border-color: #79aa8a; }
+html[data-theme="dark"] .objective-item-copy > span, html[data-theme="dark"] .created-date { color: #aac0ad; }
+html[data-theme="dark"] .objective-chevron { color: #a8d7b8; }
+html[data-theme="dark"] .empty-list, html[data-theme="dark"] .detail-empty-small { background: #17282a; border-color: #38524a; }
+html[data-theme="dark"] .empty-symbol { border-color: #567767; }
+html[data-theme="dark"] .selected-objective { background: #1a302e; border-color: #39594e; }
+html[data-theme="dark"] .objective-facts { border-color: #3c5b50; }
+html[data-theme="dark"] .objective-facts span { color: #a2baaa; }
+html[data-theme="dark"] .objective-facts strong { color: #e3f2e5; }
+html[data-theme="dark"] .insight-card, html[data-theme="dark"] .metrics-section { background: #192c2c; border-color: #38534c; }
+html[data-theme="dark"] .evidence-card { background: #203a32; border-color: #4c745b; border-left-color: #8fd0a2; }
+html[data-theme="dark"] .insight-number { color: #c5ead1; background: #315344; }
+html[data-theme="dark"] .hypothesis-statement, html[data-theme="dark"] .provenance-value { color: #e5efe7; }
+html[data-theme="dark"] .provenance-grid, html[data-theme="dark"] .provenance-row { border-color: #385149; }
+html[data-theme="dark"] .provenance-details summary { color: #b7e3c4; }
+html[data-theme="dark"] .provenance-details summary > span:last-child, html[data-theme="dark"] .provenance-label { color: #a6b9ab; }
+html[data-theme="dark"] .metric-table th, html[data-theme="dark"] .metric-table td { border-color: #3a514a; }
+html[data-theme="dark"] .metric-table th { color: #aac1b0; }
+html[data-theme="dark"] .metric-table td, html[data-theme="dark"] .metric-table td:first-child { color: #d7e8dc; }
+html[data-theme="dark"] .evidence-status, html[data-theme="dark"] .evidence-list { color: #c9ead2; }
+html[data-theme="dark"] .confidence, html[data-theme="dark"] .evidence-card > p, html[data-theme="dark"] .evidence-list ul, html[data-theme="dark"] .history-footer strong { color: #b1cdb9; }
+html[data-theme="dark"] .page-footer { color: #a1b5aa; }
+@media (max-width: 560px) {
+  .topbar-right { gap: 11px; }
+  .connection-status { font-size: 0; gap: 0; }
+  .connection-status .status-dot { width: 8px; height: 8px; }
+  .theme-toggle { gap: 7px; }
+}

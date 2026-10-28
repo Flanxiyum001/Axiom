@@ -1,5 +1,32 @@
 import { test, expect } from "@playwright/test";
 
+test("dark theme is the default and the switch persists across pages and reloads", async ({ page }) => {
+  await page.goto("/");
+  const switchControl = page.getByRole("switch", { name: "Dark mode" });
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
+  await expect(switchControl).toHaveAttribute("aria-checked", "true");
+  await expect(page.locator(".api-panel")).toHaveCSS("background-color", "rgb(26, 48, 48)");
+
+  await switchControl.click();
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
+  await expect(switchControl).toHaveAttribute("aria-checked", "false");
+  await expect(page.locator(".api-panel")).toHaveCSS("background-color", "rgb(233, 238, 233)");
+  await page.goto("/showcase");
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
+  await expect(page.getByRole("switch", { name: "Dark mode" })).toHaveAttribute("aria-checked", "false");
+
+  await page.getByRole("switch", { name: "Dark mode" }).click();
+  await page.reload();
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
+  await expect(page.getByRole("switch", { name: "Dark mode" })).toHaveAttribute("aria-checked", "true");
+  await expect(page.locator(".showcase-empty")).toHaveCSS("background-color", "rgb(20, 35, 38)");
+  if (process.env.AXIOM_CAPTURE_VISUALS === "1") {
+    await page.screenshot({ path: "test-results/axiom-showcase-dark.png", fullPage: true, animations: "disabled" });
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.screenshot({ path: "test-results/axiom-showcase-dark-mobile.png", fullPage: true, animations: "disabled" });
+  }
+});
+
 test("dashboard runs an offline objective and restores provenance from API history", async ({ page }) => {
   const errors = [];
   page.on("pageerror", (error) => errors.push(error.message));

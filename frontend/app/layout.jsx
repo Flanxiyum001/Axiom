@@ -7,7 +7,10 @@ export const metadata = {
 
 export default function RootLayout({ children }) {
   return (
-    <html lang="en">
+    <html lang="en" data-theme="dark" suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: "try{if(localStorage.getItem('axiom-theme')==='light')document.documentElement.dataset.theme='light'}catch(e){}" }} />
+      </head>
       <body>{children}</body>
     </html>
   );

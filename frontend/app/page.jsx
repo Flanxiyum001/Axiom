@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { deriveProvenance } from "../lib/provenance.mjs";
+import ThemeToggle from "./theme-toggle";
 
 const DEFAULT_API_URL =
   process.env.NEXT_PUBLIC_AXIOM_API_URL || "http://127.0.0.1:8000";
@@ -311,7 +312,7 @@ export default function DashboardPage() {
               : connection === "checking"
                 ? "Checking API"
                 : "API disconnected"}
-          </div></div>
+          </div><ThemeToggle /></div>
         </header>
 
         <div className="page-content">
