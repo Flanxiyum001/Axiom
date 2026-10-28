@@ -146,7 +146,7 @@ export function createJudgeDemoProxy({
     }
 
     let body;
-    const headers = { accept: "application/json" };
+    const headers = { accept: "application/json", "x-axiom-client-ip": clientKey(request) };
     if (mutation) {
       const contentType = request.headers.get("content-type") || "";
       if (!contentType.toLowerCase().startsWith("application/json")) {
