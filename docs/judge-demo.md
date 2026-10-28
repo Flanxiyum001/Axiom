@@ -1,6 +1,6 @@
 # Constrained judge demo: Railway deployment guide
 
-This is an opt-in **fixed synthetic CPU demonstration**. Echo supplies the hypothesis, plan, and analysis structure. The demo times a compiled-in arithmetic loop on the demo host; values vary with host load. It does not measure Nemotron inference, GPU performance, quantization, or multithreading. No Token Factory request is made by the public demo. The earlier one-request Nemotron smoke result is separate evidence.
+This is an opt-in **fixed synthetic CPU demonstration**. Echo supplies the hypothesis, plan, and analysis structure. The demo times a compiled-in arithmetic loop on the demo host; values vary with host load. It does not measure Nemotron inference, GPU performance, quantization, or multithreading. The fixed research-workspace flow makes no Token Factory request. The separate public `/showcase` page makes a bounded, server-side Nebius Token Factory request; it generates a proposal only and does not invoke the private demo executor.
 
 ## Deployment shape: public frontend, private backend
 
@@ -21,6 +21,10 @@ NEXT_PUBLIC_AXIOM_API_URL=/api
 AXIOM_BACKEND_INTERNAL_URL=http://axiom-backend.railway.internal:8000
 ```
 
+### Separate live showcase (Next.js server only)
+
+The public frontend also exposes `/showcase`, which makes a fixed, rate-limited server-side request to Nebius Token Factory. Only the Next.js server runtime should have its `NEBIUS_API_KEY`; never put it in a `NEXT_PUBLIC_*` variable. This feature is **not** routed through `/api/[...path]` or the private fixed synthetic executor, and it does not execute the model's proposed code. It should be demonstrated as a proposal, not a benchmark.
+
 ### Backend Railway variables
 
 Set these only on the backend service:
@@ -37,7 +41,7 @@ PORT=8000
 AXIOM_CORS_ORIGINS=
 ```
 
-Do not add Nebius, storage, cloud, or other provider credentials to either service. Do not mount the developer's local `.env`. Run the backend with one worker and no auto-reload:
+Do not add Nebius, storage, cloud, or other provider credentials to the **private fixed-demo backend**. For the **separate live showcase only**, the frontend's Next.js server runtime may use `NEBIUS_API_KEY` and `AXIOM_NEBIUS_SHOWCASE_ENABLED=1` as server-only environment variables. Neither may be named `NEXT_PUBLIC_*`, sent to the browser, or printed in logs. Do not mount the developer's local `.env`. Run the backend with one worker and no auto-reload:
 
 ```sh
 python -m uvicorn backend.main:app --host 0.0.0.0 --port 8000 --workers 1
@@ -51,7 +55,7 @@ The ordinary local workflow can execute generated spec Python through `LocalExec
 
 With `AXIOM_DEMO_MODE=1`, startup requires Echo, local executor selection, an in-memory DB, and no Nebius or storage credentials. The app constructs `FixedSyntheticDemoExecutor`, which validates a fixed spec marker and ignores executable spec code. It runs only a built-in arithmetic loop. Artifact access is disabled. `/research`, API documentation, arbitrary objectives, multiple iterations, and duplicate runs are disabled.
 
-**Railway caveat:** Railway's current networking documentation does not provide a general deny-all outbound firewall rule for application services. The architecture here therefore does not claim OS-level egress isolation. Its intended public path has no generated-code execution, user-controlled URL fetch, live provider request, or cloud credentials; the backend remains private. If a host-level outbound-deny policy is required by your threat model, use a host/network setup that can enforce it before sharing the demo. Do not repurpose this configuration for arbitrary code execution or untrusted workloads.
+**Railway caveat:** Railway's current networking documentation does not provide a general deny-all outbound firewall rule for application services. The architecture here therefore does not claim OS-level egress isolation. Its intended **synthetic-workspace API path** has no generated-code execution, user-controlled URL fetch, live provider request, or cloud credentials; the backend remains private. The separate Next.js showcase route does make an explicitly bounded live provider request using a server-side credential and is not forwarded to this backend. If a host-level outbound-deny policy is required by your threat model, use a host/network setup that can enforce it before sharing the demo. Do not repurpose this configuration for arbitrary code execution or untrusted workloads.
 
 The proxy allows only the intended demo API routes, rejects query-string routing, limits request bodies to 2 KiB and responses to 512 KiB, applies process-local request/mutation caps, and times out upstream calls. The backend itself caps objective creation, mutation volume, and concurrent runs. These application limits are not a substitute for upstream protection against a large HTTP flood. Configure any ingress/edge limits available on your chosen plan and keep the demo temporary. Do not enter private data; saved demo history is shared among visitors and disappears when the in-memory backend restarts.
 
@@ -73,8 +77,8 @@ Keep the backend on its private Railway address and do not generate a public dom
 
 ## Shutdown after judging
 
-Remove the frontend's public domain or ingress route, stop the frontend and backend services, remove temporary variables and hosting resources, and handle logs according to the host's retention policy. In-memory experiment history disappears when the backend process stops. No Nebius key is needed in this demo.
+Remove the frontend's public domain or ingress route, stop the frontend and backend services, remove temporary variables and hosting resources, and handle logs according to the host's retention policy. In-memory experiment history disappears when the backend process stops. The fixed synthetic research flow needs no Nebius key; the separate live showcase uses a server-side credential that must be removed when that showcase is shut down.
 
 ## Remaining limitation
 
-This provides a constrained, runnable UI workflow around a synthetic CPU measurement. It does not verify the full live Nemotron research loop, model-inference speedup, GPU execution, or GPU performance. A provider-only Nemotron smoke test is a separate result and should be described separately in the submission.
+This provides a constrained, runnable UI workflow around a synthetic CPU measurement. It does not verify the full live Nemotron research loop, model-inference speedup, GPU execution, or GPU performance. The live `/showcase` is a separate server-side Nemotron proposal experience. Neither it nor the earlier provider-only smoke test proves a complete Nemotron-driven research experiment.

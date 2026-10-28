@@ -1,48 +1,40 @@
-# Hackathon submission readiness — 19 October 2026
+# AXIOM — hackathon readiness checklist (28 October 2026)
 
-This is a checklist against the [official Nebius x NVIDIA Global AI Hackathon rules](https://nebiusglobalaihackathon.devpost.com/rules), not a claim that an entry has been submitted. The listed deadline is **30 October 2026 at 10:00 am PDT** (22:30 IST). The official requirements include a working demo or test-build URL, a public code repository with a detectable open-source license and setup instructions, a public YouTube demonstration under three minutes, a track, tool feedback, and a substantial-update explanation when applicable. Check the form and rules again before submission.
+**Release decision:** the hosted demo is deployed and the core synthetic create/run/history path has successful Railway HTTP logs. A live Nemotron proposal route exists separately and has previously returned structured output. Final PR CI, visual browser checks, entrant feedback, a public YouTube video, and Devpost submission still need completion. **Not yet a submitted entry.**
 
-There is no defensible numerical readiness score yet: a judge-accessible build, public video, and final Devpost fields are still missing. The target of 85% is a planning goal, not a measured result.
+Official deadline: **Friday 30 October 2026 at 10:00 am PDT = 10:30 pm IST**. Judges must have a working, free-to-use demo through the judging period ending 15 December 2026. Source: https://nebiusglobalaihackathon.devpost.com/rules
 
-## Verified in code and CI
+## What the repository and deployment actually show
 
-- [x] Canonical FastAPI research loop, Next.js dashboard, saved SQLite history, and visible provenance exist in the repository. [Architecture and evidence boundaries](../README.md#architecture-and-evidence-boundaries)
-- [x] Echo and local execution are the default offline path. Automated tests disable dotenv, remove Nebius settings, and block external socket connections. [Test isolation](../tests/conftest.py)
-- [x] The opt-in Token Factory smoke command uses the configured Nemotron model with at most one attempt and executes no generated code. [Command](../scripts/smoke_nebius_reasoning.py)
-- [x] Python tests, frontend tests, production build, and Chromium browser smoke passed on the merged implementation PRs #35–#37. Recheck the final submission commit and its CI before entering Devpost.
-- [x] README setup and the original Apache-2.0 license intent are documented. This branch replaces the abbreviated `LICENSE` with the official full Apache-2.0 text; **GitHub recognition on the final default branch still needs checking after merge**.
-- [x] A ready-to-edit [submission draft](hackathon-submission.md), [recording script](demo-walkthrough.md), and [tool-feedback template](tool-feedback.md) are present on this branch.
+- [x] Next.js frontend and private FastAPI backend deployed successfully to Railway on 28 October. Both services report SUCCESS; the backend has no public domain.
+- [x] Same-origin /api health and objective endpoints have 200/201 HTTP log evidence for health, create, run, and history.
+- [x] Homepage and /showcase page have successful HTTP access logs. The /showcase server route sends a fixed, bounded Nebius Token Factory request. One previous live model reply and its structured parsing were recorded; do not conflate this with synthetic execution.
+- [x] Python backend tests, frontend tests and browser-smoke workflows exist in GitHub Actions. Their results must be checked at the final submission commit, not inferred from older green runs.
+- [x] README contains environment/setup guidance; an Apache-2.0 license file exists. GitHub's visible license detection still requires an independent final check.
+- [x] Copy-ready submission draft and concise two-path video script exist in the docs.
 
-## Verified manually
+## Judge-facing links
 
-- [x] The GitHub repository is public and `main` contains merged PRs #35, #36, and #37 at this audit. The public URL is https://github.com/Flanxiyum001/Axiom.
-- [x] On 19 October 2026, the provider-only smoke command made one real Nebius Token Factory request. It reported provider `nebius`, requested and response model `nvidia/nemotron-3-super-120b-a12b`, and `"validated": true`. The command did not print the credential. [README record](../README.md#one-request-nemotron-smoke-test)
-- [x] The browser smoke exercises a complete **offline Echo** dashboard run and history reload. It does not prove a live research run.
-- [x] At audit start, GitHub's public repository metadata returned `license: NOASSERTION` for the abbreviated license on `main`. The full license replacement in this branch addresses the file-level cause; badge recognition remains unverified until GitHub processes the merged default branch.
+- Hosted research lab: https://axiom-frontend-demo.up.railway.app/#objective-workspace
+- Live structured Nemotron proposal: https://axiom-frontend-demo.up.railway.app/showcase
+- Source code: https://github.com/Flanxiyum001/Axiom
 
-## Requires my action
+The research lab uses **Echo + a fixed synthetic CPU demonstration**; the live model showcase is a **proposal**, not real inference benchmarking. No TensorRT, GPU performance, true multithreading, real model speedup or complete end-to-end live Nemotron research loop is verified.
 
-- [ ] **ACTION REQUIRED — working demo or test build:** supply a URL that judges can access free of charge through the judging period, and verify it from a fresh browser. The current unauthenticated local API and executor are not safe to publish as-is. A repository link alone is not the separate working-demo field. Plan safe Token Factory access without sharing a key or requiring judges to pay.
-- [ ] **ACTION REQUIRED — video:** rehearse the [2:50 walkthrough](demo-walkthrough.md), record the real dashboard, review it for legibility and secret safety, upload an English-language video publicly to YouTube, and place its URL in Devpost. The official limit is under three minutes; no video URL exists in this repository.
-- [ ] **ACTION REQUIRED — submission content:** confirm project title/tagline, select the recommended Best Apps and Agents track or choose a better-supported official track, complete the [tool feedback](tool-feedback.md), explain substantial hackathon-period work, and enter the final description and Built With list.
-- [ ] **ACTION REQUIRED — entrant and repository checks:** confirm team representative, eligibility, ownership, third-party material rights, and whether a pre-period version existed. After this PR merges, verify that GitHub detects Apache-2.0 at the top of the public repository, that final-commit CI passes, and that the README instructions work on a clean machine.
-- [ ] **ACTION REQUIRED — Devpost:** review the live official form and rules, add working links and any judge access instructions, and submit before the deadline. This repository audit does not submit an entry.
-- [ ] **ACTION REQUIRED — credential hygiene:** rotate any credential previously shared outside the team's intended secret store. Keep credentials out of the repository, frontend environment, recording, and submission text.
+## Release gates — do before the submission
 
-## Blocked or not implemented
+- [ ] Verify final-head Python 3.11 + 3.12 CI, frontend unit/build, and Chromium browser smoke. Review pending UI PR #44 and the follow-up showcase-readiness PR separately. Do not merge while checks are failing or running.
+- [ ] Open the public demo from a fresh browser; verify readable layout on desktop/mobile, objective create/run/history after refresh, and a showcase request or clearly labeled cached response. Observe graceful failures.
+- [ ] Confirm the server-side Nebius key is **not** in any NEXT_PUBLIC value, logs, repository, video, or browser bundle. Avoid logging credentials. Do not make needless paid requests.
+- [ ] Confirm GitHub shows the open-source license in its visible metadata, and the README setup matches the final branch.
+- [ ] Record, review and upload a **public English-language YouTube video under three minutes**, showing actual working app footage. See [demo-walkthrough.md](demo-walkthrough.md).
+- [ ] Confirm final name, tagline, Best Apps and Agents (or other correct track), Built With, public video URL, team/entrant eligibility, rights, and pre-existing-project explanation.
+- [ ] Supply personal, factual tool feedback via [tool-feedback.md](tool-feedback.md); do not invent Nebius GPU use.
+- [ ] Complete the required Devpost fields and submit **before 10:30 pm IST on 30 October**; verify the submission is actually entered.
+- [ ] Keep the demo available for judges through 15 December 2026; plan a safe shutdown only after the judging window.
 
-- [ ] No judge-accessible hosted application or test-build URL has been verified. A public deployment of the current local executor would be unsafe without isolation, authentication, and resource controls. [Pipeline audit](pipeline-audit.md)
-- [ ] No public YouTube video or submitted Devpost entry is evidenced here.
-- [ ] Full live Nemotron research-loop behavior, independently measured real-model inference improvements, quantization, true multithreading, Nebius GPU jobs, and GPU performance remain unverified. The Echo demo measures synthetic CPU arithmetic only.
+## Release constraints
 
-## Local audit command
+Do **not** replace the fixed synthetic judge executor with the ordinary local code executor on the public backend; its AST checks are not a host-level sandbox. Do **not** change Railway production infrastructure merely to pass superficial checks. The demo stores shared, non-private history in memory; a process restart clears it. Provider request caching and cooldown are per-process only. Use the final GitHub PR checks and real browser observations as separate evidence.
 
-Run `python -m scripts.check_hackathon_readiness` from the repository root. The script checks only explicit local artifacts and counts unresolved `ACTION REQUIRED` markers. A zero exit means the local audit ran and its expected files exist; it **does not** mean the submission is ready. It never opens URLs, reads credentials, calls Nebius, verifies CI, or decides whether a deployment is safe. The human and external checks above remain necessary.
-
-## This branch's local verification
-
-- Python suite: `345 passed` with `python -m pytest tests/ -q`.
-- Frontend unit tests: `9 passed` with `npm test`; `npm run build` completed successfully.
-- Chromium dashboard smoke: `3 passed` with `npm run test:smoke`, using the offline Echo configuration.
-- Local artifact audit: all explicitly listed files present, with unresolved owner actions; it reported `Submission readiness: NOT VERIFIED`.
-- Relative document links and `git diff --check`: passed. Final PR CI and external submission materials remain separate checks.
+Submission draft: [hackathon-submission.md](hackathon-submission.md). Safeguards: [judge-demo.md](judge-demo.md). Historical audit (19 October): [release-audit.md](release-audit.md).

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { BASE_URL, MODEL, buildNemotronRequest, parseNemotronContent } from "../../../../lib/nemotron-showcase.mjs";
+import { BASE_URL, buildNemotronRequest, parseNemotronContent, verifyNemotronModel } from "../../../../lib/nemotron-showcase.mjs";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -65,7 +65,9 @@ export async function POST() {
   }
 
   let result;
+  let verifiedModel;
   try {
+    verifiedModel = verifyNemotronModel(payload?.model);
     result = parseNemotronContent(payload?.choices?.[0]?.message?.content);
   } catch (error) {
     return responseError(502, error instanceof Error ? error.message : "Nemotron response validation failed.");
@@ -73,7 +75,7 @@ export async function POST() {
 
   cachedResult = {
     provider: "Nebius Token Factory",
-    model: payload.model || MODEL,
+    model: verifiedModel,
     result,
     evidence_status: "model-generated proposal; no experiment executed",
     generated_at: new Date().toISOString(),

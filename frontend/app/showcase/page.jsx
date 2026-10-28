@@ -1,6 +1,15 @@
 "use client";
 
 import { useState } from "react";
+import "./showcase.css";
+
+const FIELDS = [
+  ["01 / Hypothesis", "hypothesis"],
+  ["02 / Proposed experiment", "experiment"],
+  ["03 / Primary metric", "metric"],
+  ["04 / Safety boundary", "safety_check"],
+  ["05 / Limitation", "limitation"],
+];
 
 export default function NemotronShowcasePage() {
   const [result, setResult] = useState(null);
@@ -8,6 +17,7 @@ export default function NemotronShowcasePage() {
   const [busy, setBusy] = useState(false);
 
   async function runShowcase() {
+    if (busy) return;
     setBusy(true);
     setError("");
     try {
@@ -16,63 +26,107 @@ export default function NemotronShowcasePage() {
         headers: { "Content-Type": "application/json" },
         body: "{}",
       });
-      const payload = await response.json();
-      if (!response.ok) throw new Error(payload.error || "Showcase request failed.");
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(payload.error || "The model request could not be completed.");
+      if (!payload?.result || !payload?.model) throw new Error("The showcase returned an incomplete response.");
       setResult(payload);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Showcase request failed.");
+      setError(err instanceof Error ? err.message : "The model request could not be completed.");
     } finally {
       setBusy(false);
     }
   }
 
-  const fields = [
-    ["Hypothesis", "hypothesis"],
-    ["Proposed experiment", "experiment"],
-    ["Primary metric", "metric"],
-    ["Safety boundary", "safety_check"],
-    ["Limitation", "limitation"],
-  ];
-
   return (
-    <main style={{ maxWidth: 900, margin: "0 auto", padding: "48px 24px", color: "#edf4ec" }}>
-      <p style={{ color: "#ccf477", fontFamily: "monospace", letterSpacing: 2 }}>AXIOM / LIVE MODEL SHOWCASE</p>
-      <h1 style={{ fontSize: "clamp(32px, 6vw, 52px)", lineHeight: 1.1 }}>A live Nemotron reasoning call.</h1>
-      <p style={{ color: "#aab9ab", lineHeight: 1.8, maxWidth: 720 }}>
-        This page sends one fixed, bounded request to NVIDIA Nemotron 3 Super through Nebius Token Factory.
-        The model proposes an experiment plan; AXIOM does not execute generated code here.
-      </p>
-      <button
-        onClick={runShowcase}
-        disabled={busy}
-        style={{ marginTop: 16, border: 0, borderRadius: 8, padding: "12px 18px", fontWeight: 700, background: "#ccf477", color: "#152012", cursor: busy ? "wait" : "pointer" }}
-      >
-        {busy ? "Waiting for Nemotron…" : result ? "Request another response" : "Run live Nemotron request"}
-      </button>
-      <p style={{ color: "#aab9ab", fontSize: 13, lineHeight: 1.7 }}>
-        Requests are rate-limited per server process. The first successful response is cached during the cooldown.
-        Never enter secrets on this page.
-      </p>
-      {error && <p role="alert" style={{ color: "#ffb4a9", border: "1px solid #633d37", borderRadius: 8, padding: 12 }}>{error}</p>}
-      {result && (
-        <section aria-live="polite" style={{ marginTop: 28, border: "1px solid #344438", borderRadius: 12, padding: 22, background: "#101613" }}>
-          <p style={{ color: "#ccf477", fontFamily: "monospace", fontSize: 12 }}>{result.provider} · {result.model}</p>
-          <h2 style={{ fontSize: 22 }}>Structured model output</h2>
-          {fields.map(([label, key]) => (
-            <div key={key} style={{ borderTop: "1px solid #243128", padding: "14px 0" }}>
-              <h3 style={{ fontSize: 14, margin: "0 0 6px" }}>{label}</h3>
-              <p style={{ color: "#cbd8c9", lineHeight: 1.8, margin: 0, whiteSpace: "pre-wrap" }}>{result.result[key]}</p>
-            </div>
-          ))}
-          <p style={{ borderTop: "1px solid #243128", paddingTop: 14, color: "#ccf477", fontSize: 12 }}>
-            Evidence status: {result.evidence_status}
-          </p>
-          <p style={{ color: "#8e9e90", fontSize: 12 }}>Generated: {new Date(result.generated_at).toLocaleString()}</p>
+    <div className="showcase-shell">
+      <header className="showcase-topbar">
+        <a className="showcase-brand" href="/" aria-label="AXIOM research lab home">
+          <span className="showcase-brand-mark" aria-hidden="true">✳</span>
+          AXIOM<span className="showcase-brand-dot">.</span>
+        </a>
+        <nav aria-label="Research navigation">
+          <a href="/#objective-workspace">Research lab</a>
+          <span aria-hidden="true">/</span>
+          <span aria-current="page">Live model showcase</span>
+        </nav>
+      </header>
+
+      <main className="showcase-main">
+        <section className="showcase-hero" aria-labelledby="showcase-heading">
+          <div className="showcase-hero-copy">
+            <p className="showcase-eyebrow"><span className="showcase-status-dot" /> AXIOM / MODEL LAB 02</p>
+            <h1 id="showcase-heading">Reasoning, <em>live.</em><br />Evidence, <em>honest.</em></h1>
+            <p className="showcase-lede">
+              Ask NVIDIA Nemotron 3 Super to design a controlled ML experiment,
+              through Nebius Token Factory. Inspect its proposal without confusing
+              an AI-generated plan with an executed benchmark.
+            </p>
+            <button className="showcase-action" type="button" onClick={runShowcase} disabled={busy} aria-busy={busy}>
+              {busy ? "Requesting model proposal…" : result ? "Request model proposal again" : "Generate live experiment proposal"}
+              <span aria-hidden="true">{busy ? "◌" : "↗"}</span>
+            </button>
+            <p className="showcase-request-note">
+              A real provider request may take several seconds. Responses are cached during
+              a five-minute, per-process cooldown; repeat requests may display a cached result.
+            </p>
+          </div>
+          <div className="showcase-diagram" aria-hidden="true">
+            <div className="showcase-diagram-ring showcase-diagram-ring-one" />
+            <div className="showcase-diagram-ring showcase-diagram-ring-two" />
+            <div className="showcase-diagram-ring showcase-diagram-ring-three" />
+            <div className="showcase-diagram-center">N<span>3</span></div>
+            <span className="showcase-diagram-label showcase-diagram-label-one">OBJECTIVE</span>
+            <span className="showcase-diagram-label showcase-diagram-label-two">HYPOTHESIS</span>
+            <span className="showcase-diagram-label showcase-diagram-label-three">PLAN / NOT RUN</span>
+          </div>
         </section>
-      )}
-      <p style={{ marginTop: 32, color: "#8e9e90", fontSize: 12 }}>
-        AXIOM research console · Live model showcase only · No benchmark or GPU optimization claim is made.
-      </p>
-    </main>
+
+        {error && <p className="showcase-error" role="alert">{error}</p>}
+
+        <section className="showcase-results" aria-labelledby="showcase-results-heading">
+          <div className="showcase-section-heading">
+            <div>
+              <p className="showcase-section-kicker">02 / OUTPUT</p>
+              <h2 id="showcase-results-heading">Structured reasoning</h2>
+            </div>
+            <span className="showcase-pill">{result ? (result.cached ? "Cached model output" : "Provider response received") : "Awaiting request"}</span>
+          </div>
+
+          {result ? (
+            <div className="showcase-output" aria-live="polite">
+              <div className="showcase-output-meta">
+                <span>{result.provider} / {result.model}</span>
+                <span>{result.generated_at ? new Date(result.generated_at).toLocaleString() : "Time unavailable"}</span>
+              </div>
+              <div className="showcase-field-grid">
+                {FIELDS.map(([label, field]) => (
+                  <article className="showcase-field" key={field}>
+                    <h3>{label}</h3>
+                    <p>{result.result[field]}</p>
+                  </article>
+                ))}
+              </div>
+              <p className="showcase-evidence" data-testid="showcase-evidence">
+                <strong>Evidence status:</strong> {result.evidence_status}
+              </p>
+            </div>
+          ) : (
+            <div className="showcase-empty">
+              <span aria-hidden="true">✳</span>
+              <h3>No model proposal requested yet</h3>
+              <p>Run the bounded request above to inspect a hypothesis, experiment plan, metric, safety boundary and limitation.</p>
+            </div>
+          )}
+        </section>
+
+        <section className="showcase-boundary" aria-label="Evidence boundary">
+          <span>IMPORTANT DISTINCTION</span>
+          <p>This showcase returns a <strong>live LLM-generated proposal</strong>, not executed code,
+          real-model inference measurements, TensorRT optimization or GPU benchmark results.
+          The separate <a href="/#objective-workspace">research workspace</a> runs a labeled synthetic CPU demonstration.</p>
+        </section>
+      </main>
+      <footer className="showcase-footer"><span>AXIOM / RESEARCH INTELLIGENCE</span><span>QUESTION → HYPOTHESIS → EVIDENCE</span></footer>
+    </div>
   );
 }
