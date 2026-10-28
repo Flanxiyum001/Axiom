@@ -1,68 +1,115 @@
 # AXIOM
+### From an optimization question to an inspectable experiment
 
-AXIOM is an experimental research workspace for recording the path from an optimization question to a hypothesis, an A/B experiment, a metric comparison, and an evidence-based conclusion. A FastAPI backend coordinates the research stages; a Next.js frontend shows the plan, runs, provenance, and saved history.
+**AXIOM is an evidence-oriented ML research prototype.** It connects an optimization objective to a hypothesis, structured plan, baseline/candidate execution, metric comparison, and recorded conclusion—so reviewers can inspect what the system says and what its evidence actually supports.
 
-**Scope:** the working demonstrations use synthetic CPU arithmetic rather than model-inference benchmarks. A separate live NVIDIA Nemotron 3 Super integration generates an experiment *proposal* through Nebius Token Factory. Neither demonstration establishes an actual model speedup, quantization result, TensorRT optimization, or GPU benchmark.
+It also includes a separate live integration with **NVIDIA Nemotron 3 Super through Nebius Token Factory**. That integration proposes a structured experiment; it does not execute the proposal or claim a measured speedup.
 
-[Open the research workspace](https://axiom-frontend-demo.up.railway.app/#objective-workspace) · [Try the live Nemotron proposal](https://axiom-frontend-demo.up.railway.app/showcase)
+**Try it:** [Research workspace](https://axiom-frontend-demo.up.railway.app/#objective-workspace) · [Live Nemotron showcase](https://axiom-frontend-demo.up.railway.app/showcase) · [Source code](https://github.com/Flanxiyum001/Axiom)
 
-## Why this exists
+> **Scope at a glance:** The hosted research workflow uses Echo reasoning and a constrained synthetic CPU workload. The live Nemotron showcase is a separate, bounded planning request. Neither demonstrates real GPU benchmarking, production inference optimization, TensorRT gains, or an executed Nemotron-driven experiment.
 
-Evaluating an optimization idea requires more than comparing two numbers. An experiment should preserve the question, intervention, implementation, settings, results, and limitations together. AXIOM provides a small reference workflow for inspecting those parts in one place, while distinguishing a proposed mechanism from what the executed script can actually support.
+---
 
-It is intended for developers exploring repeatable ML experiment workflows, not for untrusted public code execution or validated production benchmarking.
+## The problem AXIOM explores
 
-## Implemented capabilities
+Optimization workflows can lose the connection between five things: the question, the hypothesis, the experiment, the evidence, and the conclusion. A fluent explanation is not the same thing as an experiment. An intervention label is not proof that an optimization was implemented. A metric printed by a script is not automatically a trustworthy measurement.
 
-| Capability | Current behavior |
-| --- | --- |
-| Objectives and history | Create and list objectives, execute research iterations, inspect their results and history through FastAPI and Next.js. The standard local configuration saves records to SQLite. |
-| Research stages | Researcher, Planner, deterministic Evaluator, and Analyst coordinate a hypothesis, experiment specification, comparison, and conclusion. |
-| Offline reasoning | The default Echo provider produces deterministic reasoning without model credentials. |
-| Local execution | An experiment engine validates specifications and runs baseline/candidate Python subprocesses. This is a trusted-local-development tool, **not a secure sandbox**. |
-| Hosted research demo | A fixed objective runs a built-in synthetic CPU task with Echo reasoning. The public frontend uses an allowlisted proxy to a private, constrained API. History is shared and held in memory until the demo process restarts. |
-| Live model showcase | A separate Next.js server route requests a fixed, structured experiment proposal from NVIDIA Nemotron 3 Super via Nebius Token Factory. It validates the response and does not execute model-generated code. Responses may be cached during a per-process cooldown. |
-| Optional backend reasoning | The local research loop can be configured to use the Nebius provider instead of Echo. Its full live end-to-end behavior has not been independently validated. |
+AXIOM brings those parts into one inspectable flow. Its contribution is a practical prototype for making research steps and evidence boundaries visible—not a claim that an autonomous agent has already discovered faster models.
 
-### The research flow
+## Start here: judge walkthrough
 
-1. The API parses an objective and stores it.
-2. The Researcher proposes a hypothesis; the Planner builds an experiment plan and specification.
-3. The engine validates the specification and collects baseline and candidate script output through the selected executor.
-4. The deterministic evaluator compares reported metrics. The Analyst records an interpretation and limitations.
-5. SQLite retains the objective, plans, runs, evaluations, and evidence for later inspection.
+No account or API key is needed to try the public demo.
 
-The local engine reads metric JSON emitted by experiment code. Those values are **not independently attested performance measurements**: code can report misleading numbers, and an intervention label is not proof that a feature was implemented. The known Echo intervention changes the amount of synthetic arithmetic. Unknown or conflicting mechanisms receive an insufficient-evidence conclusion.
+1. Open the [objective workspace](https://axiom-frontend-demo.up.railway.app/#objective-workspace).
+2. Use the displayed latency-reduction objective, create it, and run **one** research iteration.
+3. Inspect the hypothesis, plan, baseline/candidate outputs, provenance, evaluation, conclusion, and history.
+4. Open the [live Nemotron showcase](https://axiom-frontend-demo.up.railway.app/showcase) and request a proposal.
+5. Inspect its structured fields and evidence disclaimer. The result is a model-generated proposal, not an experiment result.
+6. Compare the paths: the workspace demonstrates constrained synthetic execution; the showcase demonstrates live model-assisted planning.
 
-The public demo uses a more restrictive executor: it ignores executable specification code and times only a built-in arithmetic loop. Its CPU timing values vary by host load and do not represent real ML inference latency.
+The first showcase request may take several seconds. During its process-local cooldown, a repeated request may return a cached response rather than make a fresh provider call. The hosted research history is shared in process memory and resets when the backend restarts. Do not enter private or sensitive information.
+
+## What the two paths demonstrate
+
+| Path | Implemented behavior | Not demonstrated |
+| --- | --- | --- |
+| Research workspace | Create an objective, run a constrained research iteration, compare baseline/candidate metrics, inspect provenance and history. | Real model inference, GPU execution, independently verified speedups, or durable multi-user storage. |
+| Nemotron showcase | Send a fixed, bounded request to NVIDIA Nemotron 3 Super via Nebius Token Factory and display a validated structured proposal. | Executing generated code, completing the proposed experiment, or measuring an optimization. |
+
+## How the research loop works
+
+1. **Objective intake** records the optimization question.
+2. **Researcher** proposes a hypothesis and expected mechanism.
+3. **Planner** turns it into a structured experiment specification.
+4. **Execution** validates the specification and collects baseline/candidate output through the configured executor.
+5. **Deterministic evaluation** compares metrics reported by experiment scripts and applies evidence checks.
+6. **Analyst** records an interpretation and limitations.
+7. **Persistence and inspection** retain research records locally for later review.
+
+The evaluator is separate from the language-model reasoning stages, making comparison logic easier to inspect and test. However, it does not independently prove that an experiment implemented its claimed intervention or that reported values are truthful.
+
+### Evidence boundaries are deliberate
+
+- **Proposal ≠ execution.** The live Nemotron showcase does not execute generated code.
+- **Reported metric ≠ independent ground truth.** The local engine reads metric JSON emitted by experiment code; scripts can report misleading values.
+- **Intervention label ≠ proof of mechanism.** A name alone does not establish that an optimization was implemented.
+- **Synthetic CPU timing ≠ ML inference latency.** The hosted executor times a built-in arithmetic workload; host load affects timings.
+- **Reasoning provider ≠ execution backend.** Selecting Nemotron for reasoning does not turn a CPU workload into a GPU benchmark.
+
+The known Echo intervention changes the amount of synthetic arithmetic. Unsupported or conflicting intervention claims receive an insufficient-evidence conclusion rather than an affirmative mechanism claim. This is a bounded prototype, not a general guarantee against deceptive experiment code.
 
 ## Architecture
 
 ```text
-frontend/app/page.jsx                 Next.js research dashboard
-frontend/app/showcase/page.jsx        Live-model proposal interface
-frontend/app/api/showcase/nemotron/   Bounded server-side Token Factory request
-frontend/lib/judge-demo-proxy.mjs     Allowlisted proxy for the fixed hosted demo
-
-backend/main.py                       FastAPI application and CORS configuration
-backend/axiom/api/routes.py           Objective, run and history endpoints
-backend/axiom/services/research_loop.py
-                                      Research stage orchestration
-backend/axiom/execution/              Validation, execution, deterministic evaluation
-backend/axiom/memory/sqlite_repo.py   Research record storage
-backend/axiom/demo.py                 Fixed synthetic CPU demonstration
-backend/llm/nebius.py                 Optional Token Factory reasoning provider
+Browser
+  -> Next.js frontend
+       |-- Research dashboard
+       |-- Live Nemotron proposal interface
+       |     `-- Server-side bounded request to Nebius Token Factory
+       `-- Allowlisted same-origin proxy for hosted research demo
+               -> Private FastAPI backend
+                    |-- Objective/run API
+                    |-- Research-loop orchestration
+                    |-- Researcher / Planner / Analyst
+                    |-- Specification validation and execution
+                    |-- Deterministic metric evaluation
+                    `-- SQLite storage in local configuration
 ```
 
-The experiment executor and the reasoning provider are separate choices. Selecting Nemotron for *reasoning* does not turn the CPU workload into a GPU or model-inference benchmark. The experimental Nebius GPU execution adapter is not verified end to end; it is not part of the hosted demonstration.
+| Path | Responsibility |
+| --- | --- |
+| `frontend/app/page.jsx` | Research dashboard |
+| `frontend/app/showcase/page.jsx` | Live-model proposal interface |
+| `frontend/app/api/showcase/nemotron/` | Bounded server-side Token Factory request |
+| `frontend/lib/judge-demo-proxy.mjs` | Allowlisted proxy for the fixed hosted demo |
+| `backend/main.py` | FastAPI application |
+| `backend/axiom/api/routes.py` | Objective, run, and history endpoints |
+| `backend/axiom/services/research_loop.py` | Research-stage orchestration |
+| `backend/axiom/execution/` | Validation, execution, and evaluation |
+| `backend/axiom/memory/sqlite_repo.py` | Local research-record persistence |
+| `backend/axiom/demo.py` | Fixed synthetic CPU demonstration |
+| `backend/llm/nebius.py` | Optional Nebius reasoning provider |
 
-**Stack:** Python, FastAPI, Pydantic, SQLite, Next.js, React, Nebius Token Factory, NVIDIA Nemotron 3 Super, pytest, Node's test runner, and Playwright.
+The public demo uses fixed Echo reasoning and a built-in synthetic CPU task. The local executor uses Python subprocesses and is intended only for trusted local development—not hostile code. The optional Nebius backend reasoning path and experimental GPU adapter have not been verified end to end and are not part of the hosted research demo.
+
+## Technology
+
+- **Frontend:** Next.js, React
+- **Backend:** Python, FastAPI, Pydantic
+- **Local persistence:** SQLite
+- **Model integration:** NVIDIA Nemotron 3 Super through Nebius Token Factory
+- **Tests:** pytest, Node.js test runner, Playwright
 
 ## Run locally
 
-Prerequisites: **Python 3.11 or 3.12**, **Node.js 22**, and npm. The project uses an ordinary npm install; no committed frontend lockfile is currently provided.
+### Prerequisites
 
-From the repository root, install the backend dependencies:
+Python 3.11 or 3.12, Node.js 22, and npm.
+
+### Install backend dependencies
+
+From the repository root:
 
 ```sh
 python -m venv .venv
@@ -71,9 +118,11 @@ source .venv/bin/activate
 python -m pip install -e '.[dev]'
 ```
 
-On Windows PowerShell, activate with `./.venv/Scripts/Activate.ps1` and use `python -m pip install -e ".[dev]"`.
+On Windows PowerShell, activate with `./.venv/Scripts/Activate.ps1` and run `python -m pip install -e ".[dev]"`.
 
-For an offline local backend, run:
+### Start the offline backend
+
+Linux / macOS:
 
 ```sh
 export AXIOM_REASONING_PROVIDER=echo
@@ -82,7 +131,7 @@ export PYTHON_DOTENV_DISABLED=1
 python -m uvicorn backend.main:app --host 127.0.0.1 --port 8000
 ```
 
-PowerShell equivalent:
+PowerShell:
 
 ```powershell
 $env:AXIOM_REASONING_PROVIDER = "echo"
@@ -91,7 +140,7 @@ $env:PYTHON_DOTENV_DISABLED = "1"
 python -m uvicorn backend.main:app --host 127.0.0.1 --port 8000
 ```
 
-In another terminal:
+In a second terminal:
 
 ```sh
 cd frontend
@@ -99,13 +148,15 @@ npm install --no-audit --no-fund
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000). The default backend URL is `http://127.0.0.1:8000`; FastAPI documentation is at `http://127.0.0.1:8000/docs`. The sample objective is `Reduce model inference latency by 20%`. You can create it, run an iteration, examine the experiment record, and reload the saved history.
+Open [http://localhost:3000](http://localhost:3000). The API docs are at [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs). The sample objective is `Reduce model inference latency by 20%`; it is an example research question, not a promise of a real-model speedup.
 
-Local records default to `axiom.db` and `artifacts/`. Override them with `AXIOM_DB_PATH` and `AXIOM_ARTIFACT_ROOT`. **Only execute trusted local experiments on a disposable, unprivileged system.** The AST validator and subprocess timeouts do not provide filesystem or network isolation.
+Local records default to `axiom.db` and `artifacts/`; override with `AXIOM_DB_PATH` and `AXIOM_ARTIFACT_ROOT`.
 
-## Nebius Token Factory configuration
+> **Security:** Run only trusted local experiments, preferably on a disposable, unprivileged system. AST validation and subprocess timeouts are not filesystem or network isolation. Never expose the unrestricted local executor API publicly.
 
-The backend defaults to Echo. For optional live reasoning, select `AXIOM_REASONING_PROVIDER=nebius` and set `NEBIUS_API_KEY` **only in the backend process environment** or a locally ignored `.env`. The canonical defaults are:
+## Optional: Nebius Token Factory
+
+The backend defaults to Echo and does not require model credentials for an offline run. For optional live reasoning, configure the backend process environment or a local ignored `.env` file:
 
 ```dotenv
 AXIOM_REASONING_PROVIDER=nebius
@@ -115,19 +166,11 @@ NEBIUS_MODEL=nvidia/nemotron-3-super-120b-a12b
 NEBIUS_API_KEY=replace-with-your-own-token
 ```
 
-Copy `.env.example` for a local template. Remove any previously exported Echo override; unset `PYTHON_DOTENV_DISABLED` if you want local dotenv loading. Live calls can incur provider charges.
+Keep real keys out of source control and never place them in `NEXT_PUBLIC_*` variables. Live calls may incur charges. A provider-only check is available via `python -m scripts.smoke_nebius_reasoning --live`; it makes at most one external request and does not execute an experiment.
 
-A one-request, provider-only verification command is available:
+The hosted showcase uses a fixed request, response validation, bounded output, timeout, and process-local cooldown/cache. These controls constrain the demo but are not a global quota or a substitute for edge-level abuse protection.
 
-```sh
-python -m scripts.smoke_nebius_reasoning --live
-```
-
-This checks a structured model response and makes at most one external request; it does **not** execute an experiment. The live showcase at `/showcase` is a separate, server-side Next.js integration using `AXIOM_NEBIUS_SHOWCASE_ENABLED=1` and `NEBIUS_API_KEY` in the **frontend server environment**, never in `NEXT_PUBLIC_*` variables.
-
-For deployment, keep the unrestricted local executor API private. The hosted synthetic API uses `AXIOM_DEMO_MODE=1` with a fixed executor behind a same-origin proxy and private Railway networking. The live-showcase endpoint is independent of that backend. The demo's process-local limits are not a substitute for edge-level abuse protection.
-
-## Tests
+## Tests and verification
 
 From the repository root:
 
@@ -144,17 +187,41 @@ npx playwright install chromium
 npm run test:smoke
 ```
 
-The browser smoke suite starts local Echo and Next.js servers on ports 8100 and 3100, runs a research objective, verifies the provenance/history view, and tests the showcase with a **mocked** provider response. It does not spend Token Factory credits. A second constrained-demo browser configuration is available via `npm run test:smoke:demo`. The tests use isolated configuration and temporary storage; set `AXIOM_TEST_PYTHON` if the test runner cannot find the desired Python interpreter.
+The Playwright smoke suite exercises the research flow and provenance/history, and tests the showcase with a **mocked provider response**. It does not spend Token Factory credits. The constrained-demo configuration is available via `npm run test:smoke:demo`. Set `AXIOM_TEST_PYTHON` if the runner cannot locate the intended interpreter.
 
-## Limitations
+Tests verify behavior under their configured conditions. A mocked showcase test is not evidence of live provider availability, and passing tests do not turn synthetic timings into scientific benchmark results.
 
-- The current example executes synthetic arithmetic; it does not benchmark a real model or GPU.
-- Locally executed generated Python is not sandboxed; stdout-derived metric values are not independently trusted measurements.
-- The hosted research demonstration uses shared, in-memory state that resets when the backend restarts.
-- The public Token Factory showcase returns a proposal, not a completed experiment. Its cooldown and cache are scoped to a single server process.
-- Nebius AI Cloud GPU execution and full live-reasoning research runs have not been verified end to end.
+## Limitations and current status
 
-See [the pipeline assessment](docs/pipeline-audit.md) for measurement caveats and [the experiment-layer guide](docs/experiment-layer.md) for extension points.
+- **No real ML/GPU benchmark:** hosted execution uses synthetic CPU arithmetic.
+- **No verified optimization claim:** no measured model-inference or TensorRT speedup is established.
+- **No secure hostile-code sandbox:** local subprocess execution is for trusted development.
+- **No independent metric attestation:** script-reported JSON values may be misleading.
+- **Limited hosted persistence:** demo history is shared process memory and resets on backend restart.
+- **Bounded live showcase:** Nemotron proposes an experiment; it does not run it. Cooldown/cache state is per process.
+- **Unverified paths:** GPU execution and a fully live-provider research loop are not claimed as complete.
+
+## FAQ
+
+**Does AXIOM use NVIDIA Nemotron?** Yes. The live showcase uses NVIDIA Nemotron 3 Super through Nebius Token Factory to generate a structured proposal. The hosted research workspace uses Echo reasoning.
+
+**Does AXIOM execute the Nemotron proposal?** No. The showcase does not execute generated code.
+
+**Are the displayed latency numbers real model benchmarks?** No. The hosted research workflow uses synthetic CPU arithmetic.
+
+**Can I configure another model or experiment?** The local architecture has configurable reasoning and execution components, but arbitrary local experiment scripts are trusted code. The experimental GPU path is not validated end to end.
+
+**Does the public demo need my API key?** No. Provider credentials are configured server-side, not by the visitor.
+
+**Is the hosted demo production-ready for multiple users?** It is a judge-facing prototype. History is process-local, and request limits are not global abuse protection.
+
+## Further reading
+
+- [Pipeline assessment](docs/pipeline-audit.md) — measurement caveats and evaluator behavior
+- [Experiment-layer guide](docs/experiment-layer.md) — execution and extension points
+- [Judge demo notes](docs/judge-demo.md) — hosted demo boundaries
+- [Hackathon submission draft](docs/hackathon-submission.md) — submission fields and remaining actions
+- [Tool feedback worksheet](docs/tool-feedback.md) — prompts for genuine first-person feedback
 
 ## License
 
