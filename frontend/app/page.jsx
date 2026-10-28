@@ -323,7 +323,7 @@ export default function DashboardPage() {
           )}
           <section className="hero" aria-labelledby="hero-title">
             <div className="hero-content">
-              <div className="eyebrow"><span className="eyebrow-line" /> THE AUTONOMOUS RESEARCH LAB <span className="hero-edition">/ 001</span></div>
+              <div className="eyebrow"><span className="eyebrow-line" /> THE RESEARCH EXPERIMENT LAB <span className="hero-edition">/ 001</span></div>
               <h1 id="hero-title">Make curiosity<br/><em>measurable.</em></h1>
               <p className="hero-copy">
                 From a question to a hypothesis, a controlled run, and a conclusion you can actually inspect.
