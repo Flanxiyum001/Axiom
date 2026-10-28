@@ -250,27 +250,30 @@ export default function DashboardPage() {
     <main className="app-shell">
       <aside className="sidebar">
         <div className="brand-lockup">
-          <div className="brand-mark">AX</div>
+          <div className="brand-mark" aria-hidden="true"><span /></div>
           <div>
-            <div className="brand-name">AXIOM</div>
-            <div className="brand-subtitle">RESEARCH CONSOLE</div>
+            <div className="brand-name">AXIOM<span className="brand-period">.</span></div>
+            <div className="brand-subtitle">RESEARCH INTELLIGENCE</div>
           </div>
         </div>
 
-        <div className="sidebar-label">WORKSPACE</div>
+        <div className="sidebar-label">YOUR WORKSPACE</div>
         <div className="nav-item nav-item-active">
-          <span className="nav-indicator" />
-          Research objectives
+          <span className="nav-icon" aria-hidden="true">◫</span>
+          Experiments
           <span className="nav-count">{objectives.length}</span>
         </div>
-        <div className="sidebar-note">
-          <span className="tiny-dot" />
-          <span>Evidence over guesswork.</span>
+        <div className="sidebar-process">
+          <div className="sidebar-label">THE METHOD</div>
+          <div><span>01</span> Define the question</div>
+          <div><span>02</span> Run the experiment</div>
+          <div><span>03</span> Follow the evidence</div>
         </div>
 
         <div className="sidebar-footer">
+          <div className="sidebar-quote">“The answer is only as good as the experiment.”</div>
           <div className="footer-line" />
-          <div className="footer-label">CURRENT PROVIDER</div>
+          <div className="footer-label">REASONING ENGINE</div>
           <div className="provider-line">
             <span className={"provider-dot " + (providerIsLive ? "provider-live" : "")} />
             <span>{provider === "unknown" ? "Not detected" : provider}</span>
@@ -287,11 +290,11 @@ export default function DashboardPage() {
       <section className="main-panel">
         <header className="topbar">
           <div className="breadcrumbs">
-            <span>AXIOM</span>
+            <span>Workspace</span>
             <span className="breadcrumb-divider">/</span>
-            <strong>Research workspace</strong>
+            <strong>Research lab</strong>
           </div>
-          <div className="connection-status">
+          <div className="topbar-right"><span className="topbar-edition">AXIOM / LAB 01</span><div className="connection-status">
             <span
               className={
                 "status-dot " +
@@ -307,7 +310,7 @@ export default function DashboardPage() {
               : connection === "checking"
                 ? "Checking API"
                 : "API disconnected"}
-          </div>
+          </div></div>
         </header>
 
         <div className="page-content">
@@ -317,19 +320,32 @@ export default function DashboardPage() {
               <span>Echo reasoning only. This run times a small, fixed arithmetic task on the demo host. It does not measure model inference, GPU performance, quantization, or multithreading.</span>
             </div>
           )}
-          <section className="hero">
-            <div className="eyebrow"><span className="eyebrow-line" /> AUTONOMOUS EXPERIMENTATION</div>
-            <h1>Turn a question into <em>evidence.</em></h1>
-            <p className="hero-copy">
-              Define a measurable objective. AXIOM proposes a hypothesis, runs a controlled
-              experiment, and returns a conclusion backed by measurements.
-            </p>
-            <div className="hero-meta">
-              <span className="meta-chip">01 / OBJECTIVE</span>
-              <span className="meta-line" />
-              <span className="meta-chip">02 / EXPERIMENT</span>
-              <span className="meta-line" />
-              <span className="meta-chip">03 / EVIDENCE</span>
+          <section className="hero" aria-labelledby="hero-title">
+            <div className="hero-content">
+              <div className="eyebrow"><span className="eyebrow-line" /> THE AUTONOMOUS RESEARCH LAB <span className="hero-edition">/ 001</span></div>
+              <h1 id="hero-title">Make curiosity<br/><em>measurable.</em></h1>
+              <p className="hero-copy">
+                From a question to a hypothesis, a controlled run, and a conclusion you can actually inspect.
+              </p>
+              <a className="hero-cta" href="#objective-workspace">Start an experiment <span aria-hidden="true">↗</span></a>
+              <div className="hero-meta">
+                <span><strong>01</strong> QUESTION</span><i />
+                <span><strong>02</strong> EXPERIMENT</span><i />
+                <span><strong>03</strong> EVIDENCE</span>
+              </div>
+            </div>
+            <div className="hero-visual" aria-hidden="true">
+              <div className="visual-grid" />
+              <div className="visual-label visual-label-top">FIG. 01 <span>EXPERIMENTAL LOOP</span></div>
+              <div className="orbit orbit-outer" />
+              <div className="orbit orbit-middle" />
+              <div className="orbit orbit-inner" />
+              <div className="orbit-tick tick-one" /><div className="orbit-tick tick-two" /><div className="orbit-tick tick-three" />
+              <div className="orbit-core"><span className="core-cross">✳</span><span>AXIOM</span><small>RESEARCH ENGINE</small></div>
+              <div className="visual-coordinate coordinate-one">Q / 01</div>
+              <div className="visual-coordinate coordinate-two">E / 02</div>
+              <div className="visual-coordinate coordinate-three">R / 03</div>
+              <div className="visual-label visual-label-bottom"><span>OBSERVE → TEST → LEARN</span><span>∞ ITERATE</span></div>
             </div>
           </section>
 
@@ -385,11 +401,15 @@ export default function DashboardPage() {
           )}
           {notice && <div className="feedback feedback-success" role="status">{notice}</div>}
 
+          <div className="workspace-heading" id="objective-workspace">
+            <div><span className="section-kicker">YOUR LAB / 01</span><h2>Experiment workspace<span>.</span></h2></div>
+            <p>Define the objective. Inspect every result.</p>
+          </div>
           <div className="workspace-grid">
             <section className="panel objective-panel">
               <div className="panel-heading">
                 <div>
-                  <div className="section-kicker">START HERE</div>
+                  <div className="section-kicker">01 / SET THE INTENT</div>
                   <h2>Research objective</h2>
                 </div>
                 <span className="step-number">01</span>
@@ -456,7 +476,7 @@ export default function DashboardPage() {
             <section className="panel detail-panel">
               <div className="panel-heading">
                 <div>
-                  <div className="section-kicker">RESEARCH OUTPUT</div>
+                  <div className="section-kicker">02 / FOLLOW THE EVIDENCE</div>
                   <h2>Experiment evidence</h2>
                 </div>
                 <span className="step-number">02</span>
@@ -542,67 +562,6 @@ export default function DashboardPage() {
                         </div>
                       )}
 
-                      {selectedRun && provenance && (
-                        <div className="insight-card" data-testid="benchmark-provenance">
-                          <div className="insight-card-head">
-                            <span className="insight-number">P</span>
-                            <span className="section-kicker">BENCHMARK PROVENANCE</span>
-                          </div>
-                          <div className="provenance-grid">
-                            <div className="provenance-row">
-                              <span className="provenance-label">Intervention evidence</span>
-                              <span className="provenance-value">{provenance.interventionDetail}</span>
-                            </div>
-                            <div className="provenance-row">
-                              <span className="provenance-label">Workload type</span>
-                              <span className="provenance-value">{readable(provenance.workloadType)}</span>
-                            </div>
-                            <div className="provenance-row">
-                              <span className="provenance-label">Lever tested</span>
-                              <span className="provenance-value">{readable(provenance.lever)}</span>
-                            </div>
-                            <div className="provenance-row">
-                              <span className="provenance-label">Provenance check</span>
-                              <span className="provenance-value">
-                                {provenance.leverConsistency === "consistent"
-                                  ? "Consistent: " + Object.entries(provenance.leverSources).map(([source, lever]) => source + "=" + lever).join(", ")
-                                  : provenance.leverConsistency === "mismatch"
-                                    ? "Mismatch: " + Object.entries(provenance.leverSources).map(([source, lever]) => source + "=" + lever).join(", ")
-                                    : "Insufficient recorded detail to verify"}
-                              </span>
-                            </div>
-                            <div className="provenance-row">
-                              <span className="provenance-label">Planned baseline settings</span>
-                              <span className="provenance-value">
-                                {Object.keys(provenance.baselineSettings).length
-                                  ? JSON.stringify(provenance.baselineSettings)
-                                  : "Not recorded in plan"}
-                              </span>
-                            </div>
-                            <div className="provenance-row">
-                              <span className="provenance-label">Planned candidate settings</span>
-                              <span className="provenance-value">
-                                {Object.keys(provenance.candidateSettings).length
-                                  ? JSON.stringify(provenance.candidateSettings)
-                                  : "Not recorded in plan"}
-                              </span>
-                            </div>
-                            <div className="provenance-row">
-                              <span className="provenance-label">Spec parameters</span>
-                              <span className="provenance-value">{JSON.stringify(provenance.parameters)}</span>
-                            </div>
-                            <div className="provenance-row">
-                              <span className="provenance-label">Execution environment</span>
-                              <span className="provenance-value">{JSON.stringify(provenance.environment)}</span>
-                            </div>
-                            <div className="provenance-row">
-                              <span className="provenance-label">Measurement method</span>
-                              <span className="provenance-value">{provenance.measurementMethod}; {provenance.runCount} recorded runs</span>
-                            </div>
-                          </div>
-                        </div>
-                      )}
-
                       {evaluation ? (
                         <div className="metrics-section">
                           <div className="result-heading compact">
@@ -668,6 +627,70 @@ export default function DashboardPage() {
                           )}
                         </div>
                       )}
+                      {selectedRun && provenance && (
+                        <div className="insight-card" data-testid="benchmark-provenance">
+                          <div className="insight-card-head">
+                            <span className="insight-number">P</span>
+                            <span className="section-kicker">BENCHMARK PROVENANCE</span>
+                          </div>
+                          <details className="provenance-details">
+                            <summary><span>Inspect full benchmark trace</span><span>{readable(provenance.workloadType)} · {readable(provenance.interventionStatus)} <span aria-hidden="true">↗</span></span></summary>
+                            <div className="provenance-grid">
+                            <div className="provenance-row">
+                              <span className="provenance-label">Intervention evidence</span>
+                              <span className="provenance-value">{provenance.interventionDetail}</span>
+                            </div>
+                            <div className="provenance-row">
+                              <span className="provenance-label">Workload type</span>
+                              <span className="provenance-value">{readable(provenance.workloadType)}</span>
+                            </div>
+                            <div className="provenance-row">
+                              <span className="provenance-label">Lever tested</span>
+                              <span className="provenance-value">{readable(provenance.lever)}</span>
+                            </div>
+                            <div className="provenance-row">
+                              <span className="provenance-label">Provenance check</span>
+                              <span className="provenance-value">
+                                {provenance.leverConsistency === "consistent"
+                                  ? "Consistent: " + Object.entries(provenance.leverSources).map(([source, lever]) => source + "=" + lever).join(", ")
+                                  : provenance.leverConsistency === "mismatch"
+                                    ? "Mismatch: " + Object.entries(provenance.leverSources).map(([source, lever]) => source + "=" + lever).join(", ")
+                                    : "Insufficient recorded detail to verify"}
+                              </span>
+                            </div>
+                            <div className="provenance-row">
+                              <span className="provenance-label">Planned baseline settings</span>
+                              <span className="provenance-value">
+                                {Object.keys(provenance.baselineSettings).length
+                                  ? JSON.stringify(provenance.baselineSettings)
+                                  : "Not recorded in plan"}
+                              </span>
+                            </div>
+                            <div className="provenance-row">
+                              <span className="provenance-label">Planned candidate settings</span>
+                              <span className="provenance-value">
+                                {Object.keys(provenance.candidateSettings).length
+                                  ? JSON.stringify(provenance.candidateSettings)
+                                  : "Not recorded in plan"}
+                              </span>
+                            </div>
+                            <div className="provenance-row">
+                              <span className="provenance-label">Spec parameters</span>
+                              <span className="provenance-value">{JSON.stringify(provenance.parameters)}</span>
+                            </div>
+                            <div className="provenance-row">
+                              <span className="provenance-label">Execution environment</span>
+                              <span className="provenance-value">{JSON.stringify(provenance.environment)}</span>
+                            </div>
+                            <div className="provenance-row">
+                              <span className="provenance-label">Measurement method</span>
+                              <span className="provenance-value">{provenance.measurementMethod}; {provenance.runCount} recorded runs</span>
+                            </div>
+                            </div>
+                          </details>
+                        </div>
+                      )}
+
                     </div>
                   ) : (
                     <div className="detail-empty detail-empty-small">

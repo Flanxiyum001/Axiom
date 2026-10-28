@@ -1,7 +1,7 @@
 import "./globals.css";
 
 export const metadata = {
-  title: "AXIOM | Research Console",
+  title: "AXIOM | Autonomous Research Lab",
   description: "Explore hypotheses, run controlled experiments, and inspect evidence with AXIOM.",
 };
 
