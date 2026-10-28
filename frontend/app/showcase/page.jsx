@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import ThemeToggle from "../theme-toggle";
 import "./showcase.css";
 
 const FIELDS = [
@@ -44,11 +45,14 @@ export default function NemotronShowcasePage() {
           <span className="showcase-brand-mark" aria-hidden="true">✳</span>
           AXIOM<span className="showcase-brand-dot">.</span>
         </a>
-        <nav aria-label="Research navigation">
-          <a href="/#objective-workspace">Research lab</a>
-          <span aria-hidden="true">/</span>
-          <span aria-current="page">Live model showcase</span>
-        </nav>
+        <div className="showcase-topbar-right">
+          <nav aria-label="Research navigation">
+            <a href="/#objective-workspace">Research lab</a>
+            <span aria-hidden="true">/</span>
+            <span aria-current="page">Live model showcase</span>
+          </nav>
+          <ThemeToggle />
+        </div>
       </header>
 
       <main className="showcase-main">

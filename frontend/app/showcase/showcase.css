@@ -1,4 +1,4 @@
-/* The main lab uses an ivory canvas; this route owns its foreground contrast. */
+/* The showcase shares the document theme with the research lab. */
 .showcase-shell { --sc-ink: #182424; --sc-night: #102023; --sc-accent: #ee7954; min-height: 100vh; background: #f3f1e9; color: var(--sc-ink); }
 .showcase-topbar { max-width: 1360px; margin: auto; min-height: 82px; padding: 18px clamp(20px, 5vw, 64px); display: flex; align-items: center; justify-content: space-between; gap: 24px; border-bottom: 1px solid #d7dcd2; }
 .showcase-brand { color: var(--sc-ink); text-decoration: none; font-weight: 800; letter-spacing: .16em; font-size: 20px; display: inline-flex; align-items: center; gap: 10px; }
@@ -6,6 +6,7 @@
 .showcase-brand-dot { color: var(--sc-accent); margin-left: -10px; }
 .showcase-topbar nav { display: flex; gap: 12px; align-items: center; font: 11px/1.4 ui-monospace, Consolas, monospace; letter-spacing: .05em; color: #667371; }
 .showcase-topbar nav a { color: #273f40; text-underline-offset: 4px; }
+.showcase-topbar-right { display: flex; align-items: center; gap: 28px; }
 .showcase-main { width: min(100%, 1360px); margin: auto; padding: 28px clamp(20px, 5vw, 64px) 80px; }
 .showcase-hero { background: var(--sc-night); color: #f9f8f2; border-radius: 18px; min-height: 490px; padding: clamp(30px, 5vw, 70px); display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(260px, .9fr); gap: 24px; overflow: hidden; position: relative; isolation: isolate; }
 .showcase-hero::before { content: ""; position: absolute; inset: 0; background: radial-gradient(circle at 85% 45%, rgba(238,121,84,.14), transparent 32%), linear-gradient(130deg, transparent, rgba(180,226,210,.045)); pointer-events: none; z-index: -1; }
@@ -66,11 +67,28 @@
 @media (max-width: 520px) {
   .showcase-topbar { align-items: start; flex-direction: column; gap: 12px; }
   .showcase-topbar nav { flex-wrap: wrap; }
+  .showcase-topbar-right { width: 100%; justify-content: space-between; flex-wrap: wrap; gap: 12px; }
   .showcase-hero { border-radius: 12px; }
   .showcase-diagram { min-height: 210px; }
   .showcase-section-heading { align-items: start; flex-direction: column; }
   .showcase-footer { padding-inline: 20px; flex-direction: column; }
 }
+html[data-theme="dark"] .showcase-shell { --sc-ink: #edf3eb; background: #0c171a; }
+html[data-theme="dark"] .showcase-topbar { border-color: #2b4242; }
+html[data-theme="dark"] .showcase-topbar nav { color: #a6b9b1; }
+html[data-theme="dark"] .showcase-topbar nav a { color: #d1e8d8; }
+html[data-theme="dark"] .showcase-error { background: #3b2929; border-color: #95594e; color: #ffc0b5; }
+html[data-theme="dark"] .showcase-section-kicker, html[data-theme="dark"] .showcase-field h3 { color: #ffad8c; }
+html[data-theme="dark"] .showcase-pill { background: #254037; border-color: #4e7762; color: #c2e8cf; }
+html[data-theme="dark"] .showcase-empty, html[data-theme="dark"] .showcase-output { background: #142326; border-color: #334b46; }
+html[data-theme="dark"] .showcase-empty p { color: #a8beb2; }
+html[data-theme="dark"] .showcase-output-meta { background: #1d3933; color: #c3e5d0; }
+html[data-theme="dark"] .showcase-field, html[data-theme="dark"] .showcase-field:nth-child(odd) { border-color: #344b44; }
+html[data-theme="dark"] .showcase-evidence { background: #1a302d; color: #c2deca; }
+html[data-theme="dark"] .showcase-boundary { background: #26322f; }
+html[data-theme="dark"] .showcase-boundary > span { color: #ffad8c; }
+html[data-theme="dark"] .showcase-boundary a { color: #ffb992; }
+html[data-theme="dark"] .showcase-footer { border-color: #2b4242; color: #a3b8ad; }
 @media (prefers-reduced-motion: reduce) {
   .showcase-diagram-ring { animation: none; }
   .showcase-action { transition: none; }
