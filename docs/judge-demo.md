@@ -55,6 +55,12 @@ With `AXIOM_DEMO_MODE=1`, startup requires Echo, local executor selection, an in
 
 The proxy allows only the intended demo API routes, rejects query-string routing, limits request bodies to 2 KiB and responses to 512 KiB, applies process-local request/mutation caps, and times out upstream calls. The backend itself caps objective creation, mutation volume, and concurrent runs. These application limits are not a substitute for upstream protection against a large HTTP flood. Configure any ingress/edge limits available on your chosen plan and keep the demo temporary. Do not enter private data; saved demo history is shared among visitors and disappears when the in-memory backend restarts.
 
+## Backend image configuration for Railway
+
+The repository-root [Dockerfile](../Dockerfile) is the deterministic backend image for the judge demo. It uses Python 3.12, installs the project dependencies into the same image that runs the API, disables dotenv loading, and starts Uvicorn with one worker. On Railway, configure the backend service to use the root `Dockerfile` and health check `/health`; clear the custom Railpack build-command override so the Dockerfile controls installation. Do not select this Dockerfile for the frontend service, which uses `/frontend` as its root directory and Railpack's Next.js build.
+
+Keep the backend on its private Railway address and do not generate a public domain for it. If the deployment logs do not show the API starting and the health check succeeding, do not expose the frontend URL to judges.
+
 ## Verification before sharing the frontend URL
 
 1. Check the Railway backend settings: one replica/worker, port 8000, no public domain, no credentials, no persistent volume, and `PYTHON_DOTENV_DISABLED=1` set before Python starts.

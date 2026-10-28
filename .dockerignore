@@ -1,0 +1,29 @@
+# Source control and local developer environments
+.git
+.github
+.venv
+**/.venv
+**/__pycache__
+**/*.py[cod]
+.pytest_cache
+.ruff_cache
+.mypy_cache
+
+# Frontend is deployed as a separate service
+frontend
+
+# Local outputs and databases
+artifacts
+axiom.db
+*.sqlite
+*.sqlite3
+*.db
+test-results
+
+# Never copy real local credentials into an image
+.env
+.env.*
+**/.env
+**/.env.*
+!**/.env.example
+!**/.env.judge-demo.example
