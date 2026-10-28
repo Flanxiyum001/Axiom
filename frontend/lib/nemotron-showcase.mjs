@@ -25,6 +25,13 @@ export const FIXED_PROMPT = [
   "The limitation must state that this response is a plan, not a benchmark result.",
 ].join("\n");
 
+export function verifyNemotronModel(model) {
+  if (model !== MODEL) {
+    throw new Error("Nebius returned an unexpected or missing model identifier.");
+  }
+  return model;
+}
+
 export function parseNemotronContent(content) {
   let parsed;
   try {
