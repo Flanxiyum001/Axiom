@@ -32,7 +32,7 @@ class DemoGuard:
 
     def _admit(self, request: Request) -> None:
         now = time.monotonic()
-        client = request.client.host if request.client else "unknown"
+        client = request.headers.get("x-axiom-client-ip") or (request.client.host if request.client else "unknown")
         while self._global_times and now - self._global_times[0] >= 60:
             self._global_times.popleft()
         for old_client, times in list(self._client_times.items()):
