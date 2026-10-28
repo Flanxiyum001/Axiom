@@ -29,7 +29,7 @@ test("live showcase is readable and renders a clearly bounded mocked proposal", 
   await expect(showcaseLink).toHaveAttribute("href", "/showcase");
   await showcaseLink.click();
   await expect(page.getByRole("heading", { name: /Reasoning,.*Evidence,.*honest\./ })).toBeVisible();
-  await expect(page.getByRole("link", { name: "Research lab" })).toHaveAttribute("href", "/#objective-workspace");
+  await expect(page.getByRole("link", { name: "Research lab", exact: true })).toHaveAttribute("href", "/#objective-workspace");
   const heroColor = await page.locator(".showcase-hero").evaluate((element) => getComputedStyle(element).backgroundColor);
   expect(heroColor).toBe("rgb(16, 32, 35)");
   await page.getByRole("button", { name: "Generate live experiment proposal" }).click();
@@ -46,7 +46,7 @@ test("showcase gives a useful error on provider cooldown without inventing a res
   }));
   await page.goto("/showcase");
   await page.getByRole("button", { name: "Generate live experiment proposal" }).click();
-  await expect(page.getByRole("alert")).toContainText("Please wait");
+  await expect(page.locator(".showcase-error[role=alert]")).toContainText("Please wait");
   await expect(page.getByText("No model proposal requested yet")).toBeVisible();
   await expect(page.getByRole("button", { name: "Generate live experiment proposal" })).toBeEnabled();
 });
