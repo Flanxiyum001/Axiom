@@ -9,7 +9,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "test": "node --test lib/provenance.test.mjs lib/judge-demo-proxy.test.mjs",
+    "test": "node --test lib/provenance.test.mjs lib/judge-demo-proxy.test.mjs lib/live-nemotron-showcase.test.mjs lib/nemotron-showcase.test.mjs",
     "test:smoke": "playwright test",
     "test:smoke:demo": "playwright test --config playwright.demo.config.mjs"
   },
