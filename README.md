@@ -86,4 +86,19 @@ The AST validator is **not a secure sandbox**. Local execution uses subprocesses
 
 Nebius GPU execution exists as an experimental adapter; its submission, mounts, storage mapping and artifact retrieval are not verified end to end. Do not enable it for the offline demo or claim GPU benchmark results.
 
+## Reproducible real-ML inference experiment
+
+AXIOM now includes an **optional local CPU benchmark** that uses scikit-learn's bundled handwritten-digits dataset and a real `StandardScaler + LogisticRegression` classifier. It compares per-row inference calls with one batched inference call using the same fitted model and test set. It checks prediction-label equivalence and reports repeated latency samples, median latency, throughput, accuracy, and environment details in JSON.
+
+This is a separate, reproducible experiment—not the hosted synthetic demo, not a GPU benchmark, and not yet an execution path orchestrated by Nemotron.
+
+```sh
+python -m pip install -e '.[ml-benchmark]'
+python -m experiments.real_inference_benchmark --repeats 10 --seed 42 --output artifacts/real-inference-benchmark.json
+```
+
+**Measured result (one local run, Windows 11 / Python 3.14.0 / scikit-learn 1.9.1 / NumPy 2.5.4):** on the 540-sample digits test set, row-wise inference took a median of **64.58 ms** while batched inference took **0.25 ms** — a **263.27×** median-latency ratio, with identical predicted labels and identical 98.15% accuracy. Full details, including environment, parity checks, and limitations, are in the [run report](artifacts/real-inference-benchmark-report.md) and [JSON artifact](artifacts/real-inference-benchmark.json).
+
+See [the benchmark protocol](docs/real-inference-benchmark.md) for the method and interpretation boundaries. Run it on the target machine and preserve its JSON report before quoting any measured result; a speedup is not guaranteed.
+
 See the [2:40 demo script and fallback](docs/demo-walkthrough.md), [release report](docs/release-audit.md), and [experiment-layer guide](docs/experiment-layer.md).

@@ -1,0 +1,57 @@
+{
+  "benchmark": "sklearn_digits_logistic_regression_cpu_inference",
+  "claim_boundary": "Real scikit-learn CPU inference on the bundled digits dataset. Not a GPU, LLM, or production-serving benchmark. Results are host-dependent.",
+  "created_at_utc": "2026-10-28T23:39:26.090688+00:00",
+  "dataset": {
+    "classes": 10,
+    "features": 64,
+    "name": "scikit-learn bundled handwritten digits",
+    "samples_total": 1797,
+    "split_seed": 42,
+    "test_samples": 540,
+    "training_samples": 1257
+  },
+  "environment": {
+    "numpy": "2.5.4",
+    "platform": "Windows-11-10.0.26200-SP0",
+    "processor": "AMD64 Family 25 Model 97 Stepping 2, AuthenticAMD",
+    "python": "3.14.0",
+    "scikit_learn": "1.9.1"
+  },
+  "interpretation": "A measured speedup applies only to this CPU workload, model, data, and execution setup. It does not imply a GPU or LLM speedup.",
+  "measurement": {
+    "batched": {
+      "accuracy": 0.9814814814814815,
+      "max_ms": 0.2782,
+      "mean_ms": 0.24919,
+      "median_ms": 0.24530000000000002,
+      "min_ms": 0.2241,
+      "samples_per_second_at_median": 2201386.0578883,
+      "stdev_ms": 0.023434658568501104
+    },
+    "clock": "time.perf_counter_ns",
+    "comparison": "same fitted model and same test set; row-wise vs one batched call",
+    "max_probability_absolute_difference": 1.1102230246251565e-15,
+    "median_latency_speedup": 263.266408479413,
+    "metric": "elapsed wall-clock milliseconds for all test samples",
+    "prediction_labels_match": true,
+    "repeats_per_method": 10,
+    "rowwise": {
+      "accuracy": 0.9814814814814815,
+      "max_ms": 65.5928,
+      "mean_ms": 64.62765,
+      "median_ms": 64.57925,
+      "min_ms": 63.597,
+      "samples_per_second_at_median": 8361.819005330659,
+      "stdev_ms": 0.7101097665541265
+    },
+    "warmup_per_method": true
+  },
+  "model": {
+    "max_iter": 2000,
+    "random_state": 42,
+    "training_time_included_in_inference_measurement": false,
+    "type": "StandardScaler + LogisticRegression"
+  },
+  "schema_version": 1
+}
