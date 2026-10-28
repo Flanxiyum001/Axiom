@@ -1,11 +1,10 @@
 [project]
 name = "axiom"
 version = "0.1.0"
-description = "Autonomous AI research platform (mock‑first architecture)."
+description = "Research experiment planning, execution and evidence tracking prototype."
 readme = "README.md"
 requires-python = ">=3.11"
 license = "Apache-2.0"
-authors = [{name = "AXIOM Team", email = "team@example.com"}]
 
 # Runtime dependencies – the canonical backend implementation
 dependencies = [
