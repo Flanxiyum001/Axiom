@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { BASE_URL, buildNemotronRequest, parseNemotronContent, verifyNemotronModel } from "../../../../lib/nemotron-showcase.mjs";
+import { BASE_URL, buildNemotronRequest, parseNemotronContent, verifyNemotronModel, isCrossSiteShowcaseRequest } from "../../../../lib/nemotron-showcase.mjs";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -15,7 +15,10 @@ function responseError(status, detail) {
   });
 }
 
-export async function POST() {
+export async function POST(request) {
+  if (isCrossSiteShowcaseRequest(request?.headers)) {
+    return responseError(403, "Cross-site model requests are not permitted.");
+  }
   const enabled = process.env.AXIOM_NEBIUS_SHOWCASE_ENABLED === "1";
   const apiKey = process.env.NEBIUS_API_KEY;
   if (!enabled) return responseError(503, "Live Nemotron showcase is not enabled.");
