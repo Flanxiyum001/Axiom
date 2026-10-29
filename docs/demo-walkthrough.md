@@ -1,29 +1,39 @@
-# AXIOM demo: 2 minutes 40 seconds
+# AXIOM — 2:20 hackathon demo video script
 
-Rehearse with both servers already running, one iteration selected, browser zoom readable, and terminals hidden. Use a dedicated empty database/artifact directory. Never open `.env`, request headers, provider logs, or personal experiment outputs on camera. Use Echo unless a separately authorized live rehearsal has succeeded. Do not promise a numerical speedup before seeing the run.
+**This is a recording script, not an existing video.** The judge demo combines two distinct capabilities: a constrained Echo/synthetic CPU research workflow and a separate live NVIDIA Nemotron 3 Super proposal via Nebius Token Factory. Do not describe the former as powered by live Nemotron or present the latter as an executed experiment.
 
-| Time | Exact action | Narration | Expected evidence |
-| --- | --- | --- | --- |
-| 0:00–0:15 | Open dashboard; show API connected and CURRENT PROVIDER. | “AXIOM turns an optimization question into an experiment with saved evidence. This session uses Echo for offline reasoning.” For an authorized live session, say “Nebius/Nemotron supplies the reasoning.” | Connected indicator; actual provider name. |
-| 0:15–0:30 | Enter `Reduce model inference latency by 20%`; click Create objective. | “This is the research goal, not a claim that a model has improved.” | Active objective with latency metric and 20% target. |
-| 0:30–0:40 | Select 1 iteration; click Run research once. | “The researcher proposes a hypothesis; the planner produces an A/B plan and Python workload.” | Running state; no duplicate clicks. |
-| 0:40–1:00 | Wait for actual completion; point to hypothesis. | “In this demonstration, the workload is synthetic CPU arithmetic. Baseline and candidate use the same implementation, with different experiment modes.” | Hypothesis and completed evaluation, or an honest execution error. |
-| 1:00–1:25 | Scroll to benchmark provenance; show planned baseline/candidate settings, parameters and environment. | “Echo models the intervention by reducing arithmetic loop iterations. These labels do not demonstrate real batching, threading or quantization. The provenance records what the script actually represents.” | Synthetic label; arithmetic iteration settings; mode candidate; intervention explanation. |
-| 1:25–1:50 | Show Baseline vs candidate table. | “These values came from the executed script's output. The evaluator computes this comparison deterministically. Any improvement applies only to this synthetic workload on this machine.” | Actual baseline/candidate numbers and computed delta; read the observed values only. |
-| 1:50–2:10 | Show Analyst conclusion and limitations. | “The analyst explains the measured result. Unknown or conflicting generated interventions receive an insufficient-evidence conclusion. A generated explanation is not independent measurement verification.” | Saved conclusion, confidence and limitations. |
-| 2:10–2:25 | Reload page; reselect the objective if needed. | “The hypothesis, implementation, runs and conclusion remain available in saved history.” | Same hypothesis, provenance and evaluation after reload. |
-| 2:25–2:40 | End on provenance. | “This demonstrates a traceable research workflow. It does not establish a real-model latency gain or a GPU benchmark. The next benchmark needs a fixed model, dataset, controlled treatment and independently instrumented measurements.” | Explicit synthetic wording remains visible. |
+| Time | Action on the real hosted application | Narration |
+| --- | --- | --- |
+| **0:00–0:15** | Open https://axiom-frontend-demo.up.railway.app/ and show the hero and API connected state. | “An optimization idea is not evidence. AXIOM keeps the journey from a question to a controlled experiment and interpretation visible.” |
+| **0:15–0:35** | Go to the objective workspace; create the displayed objective, choose one iteration, run it. | “Our judge workspace runs a constrained, repeatable synthetic CPU demonstration with offline Echo reasoning.” |
+| **0:35–1:05** | Scroll through hypothesis, plan, baseline/candidate comparison, provenance and conclusion. | “A deterministic evaluator compares two script outputs. These values are synthetic arithmetic workload results, not GPU benchmarks or real inference latency gains.” |
+| **1:05–1:20** | Show history, then reload and verify the evidence remains while the backend is running. | “The record keeps the hypothesis, measurements and limitations together. Unsupported optimization claims do not become facts.” |
+| **1:20–1:30** | Open https://axiom-frontend-demo.up.railway.app/showcase and frame the request button. | “Separately, AXIOM calls NVIDIA Nemotron 3 Super on Nebius Token Factory to propose a controlled experiment.” |
+| **1:30–1:55** | Click generate once. Display the returned hypothesis, experiment, metric, safety boundary and limitation. If a valid cached response is returned, explicitly say it is cached. | “This response is structured live-model reasoning, not generated code execution. The proposal tells us what to measure, not what has been proven.” |
+| **1:55–2:20** | Point to the evidence disclaimer; end on the AXIOM branding. | “AXIOM’s principle is simple: separate the hypothesis, the synthetic demonstration, and verified evidence. Next is independently instrumented real-model evaluation.” |
 
-## Fallback
+**The timings are targets, not guaranteed latency.** If the provider is slow or rate-limited, capture a truthful retry or use an accurately labeled cached response; do not edit footage to fabricate a fresh request. Leave around 40 seconds below the official three-minute maximum, but verify the finished file duration.
 
-If live reasoning is unavailable, stop the live backend, set `AXIOM_REASONING_PROVIDER=echo`, `AXIOM_EXECUTOR_BACKEND=local`, and `PYTHON_DOTENV_DISABLED=1`, then restart the backend using the README command. Click Recheck and confirm CURRENT PROVIDER says echo. Use a new objective and follow the same script, explicitly saying the reasoning is offline. Never describe a saved Echo run as a live Nemotron result.
+## Recording safety and QA
 
-If execution fails during rehearsal, keep the error visible, inspect the backend locally, and rerun the browser smoke command before recording. If it fails during a presentation, show a previously recorded **labelled** Echo rehearsal from dedicated demo storage and state that it is saved evidence. Do not invent measurements or edit output to simulate a completed run.
+- [ ] Rehearse from a fresh browser. Use non-private demo data; ensure API connected / provider Echo in the research workspace.
+- [ ] Use a single fixed objective and one run; metrics vary by machine. Narrate only numbers actually shown, and never guarantee the 20% target.
+- [ ] Verify five nonblank structured model fields in the showcase; no generated code is executed.
+- [ ] Hide terminal, private URLs, API keys, tokens, authorization headers, and personally identifiable information.
+- [ ] Keep the text at a readable zoom, audio intelligible, and both URLs clearly demonstrated.
+- [ ] Review the exported video end to end, including captions if used; make the English-language upload **public** on YouTube and confirm it is shorter than 3 minutes.
+- [ ] Submit the actual video URL to Devpost. No video upload or Devpost submission happens automatically.
 
-## Ten-minute pre-demo checklist
+## If something fails during the demo
 
-- **10:00–8:00:** Confirm the intended branch/commit and final CI results. Check no personal files or keys are staged.
-- **8:00–6:00:** Run `npm run test:smoke` with the virtual environment active; inspect the pass/fail result.
-- **6:00–4:00:** Start a dedicated Echo backend and frontend using README commands. Confirm API connected, correct URL and provider. Close terminals containing private output.
-- **4:00–2:00:** Create one objective, run one iteration, inspect actual baseline/candidate, provenance, conclusion, and refresh persistence.
-- **2:00–0:00:** Reset to the opening view, rehearse the 2:40 narration, confirm the fallback is available and describe only observed results.
+If the synthetic API is unavailable, check the frontend /api/health path and Railway deployments; do not present stored results as a new run. If Nemotron is unavailable, show the graceful error and state that the live proposal could not be verified at that moment. A prior verified provider response can be described as prior evidence, but never as a successful new invocation.
+
+## Ten-minute pre-demo check
+
+1. Confirm current main commit, safe demo mode, frontend/backend Railway deployment status, and final PR CI.
+2. From a private/incognito browser, visit /, /#objective-workspace and /showcase. Verify route readability and no browser errors.
+3. Create one objective, run one iteration, inspect provenance and refresh saved history; do not use private data.
+4. Verify the showcase output or gracefully handled cooldown, without repeated paid provider calls.
+5. Hide sensitive windows/notifications, then record the actual working app.
+
+See [judge-demo.md](judge-demo.md), [hackathon-submission.md](hackathon-submission.md), and the official [rules](https://nebiusglobalaihackathon.devpost.com/rules).

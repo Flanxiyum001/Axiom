@@ -2,9 +2,12 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { deriveProvenance } from "../lib/provenance.mjs";
+import ThemeToggle from "./theme-toggle";
 
 const DEFAULT_API_URL =
   process.env.NEXT_PUBLIC_AXIOM_API_URL || "http://127.0.0.1:8000";
+const EXPECT_DEMO_MODE = process.env.NEXT_PUBLIC_AXIOM_DEMO_MODE === "1";
+const DEMO_OBJECTIVE = "Reduce model inference latency by 20%";
 
 function formatDate(value) {
   if (!value) return "Not recorded";
@@ -28,6 +31,7 @@ export default function DashboardPage() {
   const [apiBase, setApiBase] = useState(DEFAULT_API_URL);
   const [connection, setConnection] = useState("checking");
   const [provider, setProvider] = useState("unknown");
+  const [demoMode, setDemoMode] = useState(EXPECT_DEMO_MODE);
   const [objectives, setObjectives] = useState([]);
   const [activeId, setActiveId] = useState(null);
   const [history, setHistory] = useState([]);
@@ -100,7 +104,15 @@ export default function DashboardPage() {
     setError("");
     try {
       const health = await request("/health");
+      if (EXPECT_DEMO_MODE && health.demo_mode !== true) {
+        throw new Error("The configured API is not running the fixed judge demo mode.");
+      }
       setProvider(health.provider || "unknown");
+      setDemoMode(health.demo_mode === true);
+      if (health.demo_mode === true) {
+        setDescription(DEMO_OBJECTIVE);
+        setIterations("1");
+      }
       setConnection("connected");
       try {
         await refreshObjectives();
@@ -234,37 +246,41 @@ export default function DashboardPage() {
   }
 
   const providerIsLive = String(provider).toLowerCase() === "nebius";
+  const visualPhase = busy.startsWith("run:") ? "running" : selectedRun ? "complete" : "ready";
 
   return (
     <main className="app-shell">
       <aside className="sidebar">
         <div className="brand-lockup">
-          <div className="brand-mark">AX</div>
+          <div className="brand-mark" aria-hidden="true"><span /></div>
           <div>
-            <div className="brand-name">AXIOM</div>
-            <div className="brand-subtitle">RESEARCH CONSOLE</div>
+            <div className="brand-name">AXIOM<span className="brand-period">.</span></div>
+            <div className="brand-subtitle">RESEARCH INTELLIGENCE</div>
           </div>
         </div>
 
-        <div className="sidebar-label">WORKSPACE</div>
+        <div className="sidebar-label">YOUR WORKSPACE</div>
         <div className="nav-item nav-item-active">
-          <span className="nav-indicator" />
-          Research objectives
+          <span className="nav-icon" aria-hidden="true">◫</span>
+          Experiments
           <span className="nav-count">{objectives.length}</span>
         </div>
-        <div className="sidebar-note">
-          <span className="tiny-dot" />
-          <span>Evidence over guesswork.</span>
+        <div className="sidebar-process">
+          <div className="sidebar-label">THE METHOD</div>
+          <div><span>01</span> Define the question</div>
+          <div><span>02</span> Run the experiment</div>
+          <div><span>03</span> Follow the evidence</div>
         </div>
 
         <div className="sidebar-footer">
+          <div className="sidebar-quote">“The answer is only as good as the experiment.”</div>
           <div className="footer-line" />
-          <div className="footer-label">CURRENT PROVIDER</div>
+          <div className="footer-label">REASONING ENGINE</div>
           <div className="provider-line">
             <span className={"provider-dot " + (providerIsLive ? "provider-live" : "")} />
             <span>{provider === "unknown" ? "Not detected" : provider}</span>
           </div>
-          {!providerIsLive && (
+          {!providerIsLive && !demoMode && (
             <p className="provider-hint">
               The backend is not reporting the Nebius provider. Set
               AXIOM_REASONING_PROVIDER=nebius in the backend environment for live Nemotron reasoning.
@@ -276,11 +292,11 @@ export default function DashboardPage() {
       <section className="main-panel">
         <header className="topbar">
           <div className="breadcrumbs">
-            <span>AXIOM</span>
+            <span>Workspace</span>
             <span className="breadcrumb-divider">/</span>
-            <strong>Research workspace</strong>
+            <strong>Research lab</strong>
           </div>
-          <div className="connection-status">
+          <div className="topbar-right"><span className="topbar-edition">AXIOM / LAB 01</span><div className="connection-status">
             <span
               className={
                 "status-dot " +
@@ -296,23 +312,56 @@ export default function DashboardPage() {
               : connection === "checking"
                 ? "Checking API"
                 : "API disconnected"}
-          </div>
+          </div><ThemeToggle /></div>
         </header>
 
         <div className="page-content">
-          <section className="hero">
-            <div className="eyebrow"><span className="eyebrow-line" /> AUTONOMOUS EXPERIMENTATION</div>
-            <h1>Turn a question into <em>evidence.</em></h1>
-            <p className="hero-copy">
-              Define a measurable objective. AXIOM proposes a hypothesis, runs a controlled
-              experiment, and returns a conclusion backed by measurements.
-            </p>
-            <div className="hero-meta">
-              <span className="meta-chip">01 / OBJECTIVE</span>
-              <span className="meta-line" />
-              <span className="meta-chip">02 / EXPERIMENT</span>
-              <span className="meta-line" />
-              <span className="meta-chip">03 / EVIDENCE</span>
+          {demoMode && (
+            <div className="demo-banner" role="note" data-testid="demo-banner">
+              <strong>Fixed synthetic CPU demo</strong>
+              <span>Echo reasoning only. This run times a small, fixed arithmetic task on the demo host. It does not measure model inference, GPU performance, quantization, or multithreading.</span>
+            </div>
+          )}
+          <section className="hero" aria-labelledby="hero-title">
+            <div className="hero-content">
+              <div className="eyebrow"><span className="eyebrow-line" /> THE RESEARCH EXPERIMENT LAB <span className="hero-edition">/ 001</span></div>
+              <h1 id="hero-title">Make curiosity<br/><em>measurable.</em></h1>
+              <p className="hero-copy">
+                From a question to a hypothesis, a controlled run, and a conclusion you can actually inspect.
+              </p>
+              <a className="hero-cta" href="#objective-workspace">Start an experiment <span aria-hidden="true">↗</span></a>
+              <p style={{ margin: "14px 0 0", color: "#61736e", fontSize: 12, lineHeight: 1.6 }}>
+                Or explore <a href="/showcase" style={{ color: "#b95435", fontWeight: 700, textUnderlineOffset: 3 }}>live Nemotron reasoning ↗</a> — an AI-generated proposal, not an executed benchmark.
+              </p>
+              <div className="hero-meta">
+                <span><strong>01</strong> QUESTION</span><i />
+                <span><strong>02</strong> EXPERIMENT</span><i />
+                <span><strong>03</strong> EVIDENCE</span>
+              </div>
+            </div>
+            <div className={"hero-visual phase-" + visualPhase} aria-hidden="true">
+              <div className="visual-grid" />
+              <div className="visual-sweep" />
+              <div className="visual-label visual-label-top">FIG. 01 <span>AXIOM / RESEARCH ENGINE</span></div>
+              <div className="orbit-ruler" />
+              <div className="orbit orbit-outer" />
+              <div className="orbit orbit-middle" />
+              <div className="orbit orbit-inner" />
+              <div className="orbit-scan" />
+              <svg className="orbit-route" viewBox="0 0 520 422" preserveAspectRatio="xMidYMid meet" focusable="false">
+                <path className="route-underlay" d="M 108 128 C 159 48 335 26 404 132 S 443 338 307 359 S 72 308 108 128 Z" />
+                <path className="route-trace" d="M 108 128 C 159 48 335 26 404 132 S 443 338 307 359 S 72 308 108 128 Z" />
+              </svg>
+              <div className="orbit-tick tick-one" /><div className="orbit-tick tick-two" /><div className="orbit-tick tick-three" />
+              <div className="orbit-core">
+                <span className="core-cross">✳</span>
+                <span>AXIOM</span>
+                <small>{visualPhase === "running" ? "RESEARCH IN PROGRESS" : visualPhase === "complete" ? "EVIDENCE RECORDED" : "AWAITING OBJECTIVE"}</small>
+              </div>
+              <div className="visual-coordinate coordinate-one"><b>01</b><span>QUESTION</span></div>
+              <div className="visual-coordinate coordinate-two"><b>02</b><span>EXPERIMENT</span></div>
+              <div className="visual-coordinate coordinate-three"><b>03</b><span>EVIDENCE</span></div>
+              <div className="visual-label visual-label-bottom"><span>OBSERVE → TEST → LEARN</span><span className="visual-live"><i />{visualPhase === "running" ? "RUNNING" : visualPhase === "complete" ? "RESULT READY" : "SYSTEM READY"}</span></div>
             </div>
           </section>
 
@@ -326,7 +375,9 @@ export default function DashboardPage() {
                 {connection === "connected" ? "Reachable" : connection === "checking" ? "Checking" : "Needs attention"}
               </span>
             </div>
-            <form className="api-form" onSubmit={handleConnect}>
+            {demoMode ? (
+              <p className="field-hint">This demo uses its configured API endpoint: {normalizedBase}</p>
+            ) : <form className="api-form" onSubmit={handleConnect}>
               <label className="visually-hidden" htmlFor="api-url">AXIOM API URL</label>
               <input
                 id="api-url"
@@ -346,11 +397,11 @@ export default function DashboardPage() {
               >
                 Recheck
               </button>
-            </form>
-            <p className="field-hint">
+            </form>}
+            {!demoMode && <p className="field-hint">
               Local default: start the API with <code>uvicorn backend.main:app --reload</code>.
               For a deployed frontend, configure AXIOM_CORS_ORIGINS on the backend.
-            </p>
+            </p>}
           </section>
 
           {error && (
@@ -366,17 +417,21 @@ export default function DashboardPage() {
           )}
           {notice && <div className="feedback feedback-success" role="status">{notice}</div>}
 
+          <div className="workspace-heading" id="objective-workspace">
+            <div><span className="section-kicker">YOUR LAB / 01</span><h2>Experiment workspace<span>.</span></h2></div>
+            <p>Define the objective. Inspect every result.</p>
+          </div>
           <div className="workspace-grid">
             <section className="panel objective-panel">
               <div className="panel-heading">
                 <div>
-                  <div className="section-kicker">START HERE</div>
+                  <div className="section-kicker">01 / SET THE INTENT</div>
                   <h2>Research objective</h2>
                 </div>
                 <span className="step-number">01</span>
               </div>
               <p className="panel-intro">
-                Describe the improvement you want to investigate in plain language.
+                {demoMode ? "The public demo accepts this one fixed objective." : "Describe the improvement you want to investigate in plain language."}
               </p>
               <form className="objective-form" onSubmit={handleCreate}>
                 <label htmlFor="objective-description">What should AXIOM investigate?</label>
@@ -384,6 +439,7 @@ export default function DashboardPage() {
                   id="objective-description"
                   value={description}
                   onChange={(event) => setDescription(event.target.value)}
+                  readOnly={demoMode}
                   placeholder="Example: Reduce model inference latency by 20% without lowering accuracy"
                   minLength={3}
                   maxLength={1000}
@@ -391,7 +447,7 @@ export default function DashboardPage() {
                   required
                 />
                 <div className="form-footer">
-                  <span>{description.length}/1000 characters</span>
+                  <span>{demoMode ? "Fixed demo input" : `${description.length}/1000 characters`}</span>
                   <button className="button button-primary" type="submit" disabled={busy !== "" || connection !== "connected" || description.trim().length < 3}>
                     {busy === "create" ? "Creating…" : "Create objective"}
                     <span aria-hidden="true">↗</span>
@@ -436,7 +492,7 @@ export default function DashboardPage() {
             <section className="panel detail-panel">
               <div className="panel-heading">
                 <div>
-                  <div className="section-kicker">RESEARCH OUTPUT</div>
+                  <div className="section-kicker">02 / FOLLOW THE EVIDENCE</div>
                   <h2>Experiment evidence</h2>
                 </div>
                 <span className="step-number">02</span>
@@ -479,8 +535,8 @@ export default function DashboardPage() {
                         disabled={busy !== ""}
                       >
                         <option value="1">1 iteration · recommended</option>
-                        <option value="2">2 iterations</option>
-                        <option value="3">3 iterations</option>
+                        {!demoMode && <option value="2">2 iterations</option>}
+                        {!demoMode && <option value="3">3 iterations</option>}
                       </select>
                       <button
                         className="button button-primary"
@@ -492,8 +548,16 @@ export default function DashboardPage() {
                         <span aria-hidden="true">↗</span>
                       </button>
                     </div>
+                    {busy === "run:" + activeObjective.id && (
+                      <div className="run-activity" role="status">
+                        <span className="run-activity-icon" aria-hidden="true" />
+                        <span><strong>Research loop underway</strong><small>Preparing a hypothesis, running the experiment, and evaluating evidence.</small></span>
+                      </div>
+                    )}
                     <p className="field-hint">
-                      A run calls the configured reasoning provider. Multiple iterations may consume more API quota.
+                      {demoMode
+                        ? "One run per objective. Echo prepares the hypothesis and plan; the fixed CPU adapter measures three baseline and three candidate samples."
+                        : "A run calls the configured reasoning provider. Multiple iterations may consume more API quota."}
                     </p>
                   </div>
 
@@ -502,10 +566,10 @@ export default function DashboardPage() {
                       <div className="result-heading">
                         <div>
                           <div className="section-kicker">LATEST RESULT</div>
-                          <h3>{scriptTargetReached ? "Script metric target reached" : "Evidence collected"}</h3>
+                          <h3>{scriptTargetReached ? (demoMode ? "Synthetic CPU task target reached" : "Script metric target reached") : "Evidence collected"}</h3>
                         </div>
                         <span className={"pill " + (scriptTargetReached && syntheticInterventionSupported ? "pill-success" : "pill-neutral")}>
-                          {scriptTargetReached ? targetStatus : selectedRun.stopped ? readable(selectedRun.stop_reason || "completed") : "Reviewed"}
+                          {scriptTargetReached ? (demoMode ? "Fixed synthetic CPU target met" : targetStatus) : selectedRun.stopped ? readable(selectedRun.stop_reason || "completed") : "Reviewed"}
                         </span>
                       </div>
 
@@ -517,67 +581,6 @@ export default function DashboardPage() {
                           </div>
                           <p className="hypothesis-statement">{hypothesis.statement}</p>
                           {hypothesis.rationale && <p className="hypothesis-rationale">{hypothesis.rationale}</p>}
-                        </div>
-                      )}
-
-                      {selectedRun && provenance && (
-                        <div className="insight-card" data-testid="benchmark-provenance">
-                          <div className="insight-card-head">
-                            <span className="insight-number">P</span>
-                            <span className="section-kicker">BENCHMARK PROVENANCE</span>
-                          </div>
-                          <div className="provenance-grid">
-                            <div className="provenance-row">
-                              <span className="provenance-label">Intervention evidence</span>
-                              <span className="provenance-value">{provenance.interventionDetail}</span>
-                            </div>
-                            <div className="provenance-row">
-                              <span className="provenance-label">Workload type</span>
-                              <span className="provenance-value">{readable(provenance.workloadType)}</span>
-                            </div>
-                            <div className="provenance-row">
-                              <span className="provenance-label">Lever tested</span>
-                              <span className="provenance-value">{readable(provenance.lever)}</span>
-                            </div>
-                            <div className="provenance-row">
-                              <span className="provenance-label">Provenance check</span>
-                              <span className="provenance-value">
-                                {provenance.leverConsistency === "consistent"
-                                  ? "Consistent: " + Object.entries(provenance.leverSources).map(([source, lever]) => source + "=" + lever).join(", ")
-                                  : provenance.leverConsistency === "mismatch"
-                                    ? "Mismatch: " + Object.entries(provenance.leverSources).map(([source, lever]) => source + "=" + lever).join(", ")
-                                    : "Insufficient recorded detail to verify"}
-                              </span>
-                            </div>
-                            <div className="provenance-row">
-                              <span className="provenance-label">Planned baseline settings</span>
-                              <span className="provenance-value">
-                                {Object.keys(provenance.baselineSettings).length
-                                  ? JSON.stringify(provenance.baselineSettings)
-                                  : "Not recorded in plan"}
-                              </span>
-                            </div>
-                            <div className="provenance-row">
-                              <span className="provenance-label">Planned candidate settings</span>
-                              <span className="provenance-value">
-                                {Object.keys(provenance.candidateSettings).length
-                                  ? JSON.stringify(provenance.candidateSettings)
-                                  : "Not recorded in plan"}
-                              </span>
-                            </div>
-                            <div className="provenance-row">
-                              <span className="provenance-label">Spec parameters</span>
-                              <span className="provenance-value">{JSON.stringify(provenance.parameters)}</span>
-                            </div>
-                            <div className="provenance-row">
-                              <span className="provenance-label">Execution environment</span>
-                              <span className="provenance-value">{JSON.stringify(provenance.environment)}</span>
-                            </div>
-                            <div className="provenance-row">
-                              <span className="provenance-label">Measurement method</span>
-                              <span className="provenance-value">{provenance.measurementMethod}; {provenance.runCount} recorded runs</span>
-                            </div>
-                          </div>
                         </div>
                       )}
 
@@ -646,6 +649,70 @@ export default function DashboardPage() {
                           )}
                         </div>
                       )}
+                      {selectedRun && provenance && (
+                        <div className="insight-card" data-testid="benchmark-provenance">
+                          <div className="insight-card-head">
+                            <span className="insight-number">P</span>
+                            <span className="section-kicker">BENCHMARK PROVENANCE</span>
+                          </div>
+                          <details className="provenance-details">
+                            <summary><span>Inspect full benchmark trace</span><span>{readable(provenance.workloadType)} · {readable(provenance.interventionStatus)} <span aria-hidden="true">↗</span></span></summary>
+                            <div className="provenance-grid">
+                            <div className="provenance-row">
+                              <span className="provenance-label">Intervention evidence</span>
+                              <span className="provenance-value">{provenance.interventionDetail}</span>
+                            </div>
+                            <div className="provenance-row">
+                              <span className="provenance-label">Workload type</span>
+                              <span className="provenance-value">{readable(provenance.workloadType)}</span>
+                            </div>
+                            <div className="provenance-row">
+                              <span className="provenance-label">Lever tested</span>
+                              <span className="provenance-value">{readable(provenance.lever)}</span>
+                            </div>
+                            <div className="provenance-row">
+                              <span className="provenance-label">Provenance check</span>
+                              <span className="provenance-value">
+                                {provenance.leverConsistency === "consistent"
+                                  ? "Consistent: " + Object.entries(provenance.leverSources).map(([source, lever]) => source + "=" + lever).join(", ")
+                                  : provenance.leverConsistency === "mismatch"
+                                    ? "Mismatch: " + Object.entries(provenance.leverSources).map(([source, lever]) => source + "=" + lever).join(", ")
+                                    : "Insufficient recorded detail to verify"}
+                              </span>
+                            </div>
+                            <div className="provenance-row">
+                              <span className="provenance-label">Planned baseline settings</span>
+                              <span className="provenance-value">
+                                {Object.keys(provenance.baselineSettings).length
+                                  ? JSON.stringify(provenance.baselineSettings)
+                                  : "Not recorded in plan"}
+                              </span>
+                            </div>
+                            <div className="provenance-row">
+                              <span className="provenance-label">Planned candidate settings</span>
+                              <span className="provenance-value">
+                                {Object.keys(provenance.candidateSettings).length
+                                  ? JSON.stringify(provenance.candidateSettings)
+                                  : "Not recorded in plan"}
+                              </span>
+                            </div>
+                            <div className="provenance-row">
+                              <span className="provenance-label">Spec parameters</span>
+                              <span className="provenance-value">{JSON.stringify(provenance.parameters)}</span>
+                            </div>
+                            <div className="provenance-row">
+                              <span className="provenance-label">Execution environment</span>
+                              <span className="provenance-value">{JSON.stringify(provenance.environment)}</span>
+                            </div>
+                            <div className="provenance-row">
+                              <span className="provenance-label">Measurement method</span>
+                              <span className="provenance-value">{provenance.measurementMethod}; {provenance.runCount} recorded runs</span>
+                            </div>
+                            </div>
+                          </details>
+                        </div>
+                      )}
+
                     </div>
                   ) : (
                     <div className="detail-empty detail-empty-small">
