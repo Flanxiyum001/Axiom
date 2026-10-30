@@ -104,6 +104,20 @@ export function parseNemotronContent(content) {
 
 // A small, allowlisted, redacted log record. No raw completion text, no
 // provider error body, no Authorization header or secret environment fields.
+// Enforce the full OpenAI-compatible completion contract before accepting
+// JSON. Some providers can return parseable content with finish_reason=length.
+export function validateNemotronCompletion(payload) {
+  const model = verifyNemotronModel(payload?.model);
+  const finishReason = payload?.choices?.[0]?.finish_reason;
+  if (finishReason !== "stop") {
+    throw new NemotronContentError(
+      finishReason === "length" ? "output_truncated" : "finish_reason_not_stop"
+    );
+  }
+  const result = parseNemotronContent(payload?.choices?.[0]?.message?.content);
+  return { model, result };
+}
+
 export function describeNemotronResponse({ upstreamStatus = null, responseContentType = null, payload = null, condition = null } = {}) {
   const rawModel = payload?.model;
   const rawFinish = payload?.choices?.[0]?.finish_reason;
