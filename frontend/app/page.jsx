@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { deriveProvenance } from "../lib/provenance.mjs";
-import ThemeToggle from "./theme-toggle";
+import AppShell from "./app-shell";
 
 const DEFAULT_API_URL =
   process.env.NEXT_PUBLIC_AXIOM_API_URL || "http://127.0.0.1:8000";
@@ -245,76 +245,16 @@ export default function DashboardPage() {
     }
   }
 
-  const providerIsLive = String(provider).toLowerCase() === "nebius";
   const visualPhase = busy.startsWith("run:") ? "running" : selectedRun ? "complete" : "ready";
 
   return (
-    <main className="app-shell">
-      <aside className="sidebar">
-        <div className="brand-lockup">
-          <div className="brand-mark" aria-hidden="true"><span /></div>
-          <div>
-            <div className="brand-name">AXIOM<span className="brand-period">.</span></div>
-            <div className="brand-subtitle">RESEARCH INTELLIGENCE</div>
-          </div>
-        </div>
-
-        <div className="sidebar-label">YOUR WORKSPACE</div>
-        <div className="nav-item nav-item-active">
-          <span className="nav-icon" aria-hidden="true">◫</span>
-          Experiments
-          <span className="nav-count">{objectives.length}</span>
-        </div>
-        <div className="sidebar-process">
-          <div className="sidebar-label">THE METHOD</div>
-          <div><span>01</span> Define the question</div>
-          <div><span>02</span> Run the experiment</div>
-          <div><span>03</span> Follow the evidence</div>
-        </div>
-
-        <div className="sidebar-footer">
-          <div className="sidebar-quote">“The answer is only as good as the experiment.”</div>
-          <div className="footer-line" />
-          <div className="footer-label">REASONING ENGINE</div>
-          <div className="provider-line">
-            <span className={"provider-dot " + (providerIsLive ? "provider-live" : "")} />
-            <span>{provider === "unknown" ? "Not detected" : provider}</span>
-          </div>
-          {!providerIsLive && !demoMode && (
-            <p className="provider-hint">
-              The backend is not reporting the Nebius provider. Set
-              AXIOM_REASONING_PROVIDER=nebius in the backend environment for live Nemotron reasoning.
-            </p>
-          )}
-        </div>
-      </aside>
-
-      <section className="main-panel">
-        <header className="topbar">
-          <div className="breadcrumbs">
-            <span>Workspace</span>
-            <span className="breadcrumb-divider">/</span>
-            <strong>Research lab</strong>
-          </div>
-          <div className="topbar-right"><span className="topbar-edition">AXIOM / LAB 01</span><div className="connection-status">
-            <span
-              className={
-                "status-dot " +
-                (connection === "connected"
-                  ? "status-online"
-                  : connection === "checking"
-                    ? "status-checking"
-                    : "status-offline")
-              }
-            />
-            {connection === "connected"
-              ? "API connected"
-              : connection === "checking"
-                ? "Checking API"
-                : "API disconnected"}
-          </div><ThemeToggle /></div>
-        </header>
-
+    <AppShell
+      section="workspace"
+      objectiveCount={objectives.length}
+      provider={provider}
+      demoMode={demoMode}
+      connection={connection}
+    >
         <div className="page-content">
           {demoMode && (
             <div className="demo-banner" role="note" data-testid="demo-banner">
@@ -330,8 +270,8 @@ export default function DashboardPage() {
                 From a question to a hypothesis, a controlled run, and a conclusion you can actually inspect.
               </p>
               <a className="hero-cta" href="#objective-workspace">Start an experiment <span aria-hidden="true">↗</span></a>
-              <p style={{ margin: "14px 0 0", color: "#61736e", fontSize: 12, lineHeight: 1.6 }}>
-                Or explore <a href="/showcase" style={{ color: "#b95435", fontWeight: 700, textUnderlineOffset: 3 }}>live Nemotron reasoning ↗</a> — an AI-generated proposal, not an executed benchmark.
+              <p className="assistant-crosslink">
+                Or explore the <a href="/showcase">AI Research Assistant · live Nemotron reasoning ↗</a> — proposals, not executed experiments.
               </p>
               <div className="hero-meta">
                 <span><strong>01</strong> QUESTION</span><i />
@@ -745,7 +685,6 @@ export default function DashboardPage() {
             <span>Built for traceable experiments, not guesses.</span>
           </footer>
         </div>
-      </section>
-    </main>
+    </AppShell>
   );
 }
