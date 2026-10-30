@@ -93,6 +93,16 @@ Browser
 
 The public demo uses fixed Echo reasoning and a built-in synthetic CPU task. The local executor uses Python subprocesses and is intended only for trusted local development—not hostile code. The optional Nebius backend reasoning path and experimental GPU adapter have not been verified end to end and are not part of the hosted research demo.
 
+## Architecture and evidence boundaries
+
+`backend/main.py` mounts the canonical routes in `backend/axiom/api/routes.py`. `LoopServices` connects Researcher -> Planner -> AST validator -> local executor -> deterministic evaluator -> Analyst -> SQLite. `axiom/` is an import shim pointing to `backend/axiom`. `frontend/app/page.jsx` consumes API responses and persisted history; `frontend/lib/provenance.mjs` derives display provenance.
+
+Baseline and candidate execute the same Python code and parameters, with both mode environment variables forced to the appropriate condition. The executor parses metric JSON from process stdout; the evaluator computes the comparison without asking an LLM for measurement values. Generated code can still emit fabricated values: parsing stdout is **not independent measurement attestation**. Only the known Echo implementation is identified as a verified synthetic intervention. Unknown or conflicting implementations receive an insufficient-evidence analyst conclusion. Matching lever declarations do not prove an implementation. The dashboard distinguishes planned settings, spec parameters, execution environment, and measured metrics.
+
+The AST validator is **not a secure sandbox**. Local execution uses subprocesses, temporary working directories, minimal environment, timeouts and best-effort POSIX resource limits. It does not isolate the host filesystem or network, and Windows does not supply POSIX resource limits. Run only trusted experiments on a disposable, unprivileged machine. Do not expose this unauthenticated local API to untrusted users. See [pipeline audit](docs/pipeline-audit.md) for remaining limitations and the smallest real-inference follow-up.
+
+Nebius GPU execution exists as an experimental adapter; its submission, mounts, storage mapping and artifact retrieval are not verified end to end. Do not enable it for the offline demo or claim GPU benchmark results.
+
 ## Technology
 
 - **Frontend:** Next.js, React
@@ -112,7 +122,11 @@ python -m pip install -e '.[ml-benchmark]'
 python -m experiments.real_inference_benchmark --repeats 10 --seed 42 --output artifacts/real-inference-benchmark.json
 ```
 
+**Measured result (one local run, Windows 11 / Python 3.14.0 / scikit-learn 1.9.1 / NumPy 2.5.4):** on the 540-sample digits test set, row-wise inference took a median of **64.58 ms** while batched inference took **0.25 ms** — a **263.27×** median-latency ratio, with identical predicted labels and identical 98.15% accuracy. Full details, including environment, parity checks, and limitations, are in the [run report](artifacts/real-inference-benchmark-report.md) and [JSON artifact](artifacts/real-inference-benchmark.json).
+
 See [the benchmark protocol](docs/real-inference-benchmark.md) for the method and interpretation boundaries. Run it on the target machine and preserve its JSON report before quoting any measured result; a speedup is not guaranteed.
+
+See the [2:40 demo script and fallback](docs/demo-walkthrough.md), [release report](docs/release-audit.md), and [experiment-layer guide](docs/experiment-layer.md).
 
 ## Run locally
 
@@ -230,8 +244,11 @@ Tests verify behavior under their configured conditions. A mocked showcase test 
 
 ## Further reading
 
-- [Real-ML inference benchmark](docs/real-inference-benchmark.md) — reproducible CPU measurement protocol\n- [Pipeline assessment](docs/pipeline-audit.md) — measurement caveats and evaluator behavior
+- [Real-ML inference benchmark](docs/real-inference-benchmark.md) — reproducible CPU measurement protocol
+- [Pipeline assessment](docs/pipeline-audit.md) — measurement caveats and evaluator behavior
 - [Experiment-layer guide](docs/experiment-layer.md) — execution and extension points
+- [Demo walkthrough](docs/demo-walkthrough.md) — 2:40 demo script and fallback
+- [Release report](docs/release-audit.md) — release audit findings
 - [Judge demo notes](docs/judge-demo.md) — hosted demo boundaries
 - [Hackathon submission draft](docs/hackathon-submission.md) — submission fields and remaining actions
 - [Tool feedback worksheet](docs/tool-feedback.md) — prompts for genuine first-person feedback
