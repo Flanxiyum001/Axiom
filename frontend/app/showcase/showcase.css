@@ -1,13 +1,6 @@
 /* The showcase shares the document theme with the research lab. */
-.showcase-shell { --sc-ink: #182424; --sc-night: #102023; --sc-accent: #ee7954; min-height: 100vh; background: #f3f1e9; color: var(--sc-ink); }
-.showcase-topbar { max-width: 1360px; margin: auto; min-height: 82px; padding: 18px clamp(20px, 5vw, 64px); display: flex; align-items: center; justify-content: space-between; gap: 24px; border-bottom: 1px solid #d7dcd2; }
-.showcase-brand { color: var(--sc-ink); text-decoration: none; font-weight: 800; letter-spacing: .16em; font-size: 20px; display: inline-flex; align-items: center; gap: 10px; }
-.showcase-brand-mark { color: var(--sc-accent); font-size: 27px; line-height: 1; }
-.showcase-brand-dot { color: var(--sc-accent); margin-left: -10px; }
-.showcase-topbar nav { display: flex; gap: 12px; align-items: center; font: 11px/1.4 ui-monospace, Consolas, monospace; letter-spacing: .05em; color: #667371; }
-.showcase-topbar nav a { color: #273f40; text-underline-offset: 4px; }
-.showcase-topbar-right { display: flex; align-items: center; gap: 28px; }
-.showcase-main { width: min(100%, 1360px); margin: auto; padding: 28px clamp(20px, 5vw, 64px) 80px; }
+.showcase-shell { --sc-ink: var(--ink); --sc-night: var(--night); --sc-accent: var(--accent); min-height: calc(100vh - 66px); background: var(--paper); color: var(--ink); }
+.showcase-main { width: min(100%, 1360px); margin: auto; padding: 28px clamp(24px, 3.2vw, 56px) 36px; }
 .showcase-hero { background: var(--sc-night); color: #f9f8f2; border-radius: 18px; min-height: 490px; padding: clamp(30px, 5vw, 70px); display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(260px, .9fr); gap: 24px; overflow: hidden; position: relative; isolation: isolate; }
 .showcase-hero::before { content: ""; position: absolute; inset: 0; background: radial-gradient(circle at 85% 45%, rgba(238,121,84,.14), transparent 32%), linear-gradient(130deg, transparent, rgba(180,226,210,.045)); pointer-events: none; z-index: -1; }
 .showcase-hero-copy { position: relative; z-index: 1; }
@@ -65,18 +58,12 @@
   .showcase-boundary { grid-template-columns: 1fr; gap: 8px; }
 }
 @media (max-width: 520px) {
-  .showcase-topbar { align-items: start; flex-direction: column; gap: 12px; }
-  .showcase-topbar nav { flex-wrap: wrap; }
-  .showcase-topbar-right { width: 100%; justify-content: space-between; flex-wrap: wrap; gap: 12px; }
+  .showcase-main { padding: 15px 14px 24px; }
   .showcase-hero { border-radius: 12px; }
   .showcase-diagram { min-height: 210px; }
   .showcase-section-heading { align-items: start; flex-direction: column; }
   .showcase-footer { padding-inline: 20px; flex-direction: column; }
 }
-html[data-theme="dark"] .showcase-shell { --sc-ink: #edf3eb; background: #0c171a; }
-html[data-theme="dark"] .showcase-topbar { border-color: #2b4242; }
-html[data-theme="dark"] .showcase-topbar nav { color: #a6b9b1; }
-html[data-theme="dark"] .showcase-topbar nav a { color: #d1e8d8; }
 html[data-theme="dark"] .showcase-error { background: #3b2929; border-color: #95594e; color: #ffc0b5; }
 html[data-theme="dark"] .showcase-section-kicker, html[data-theme="dark"] .showcase-field h3 { color: #ffad8c; }
 html[data-theme="dark"] .showcase-pill { background: #254037; border-color: #4e7762; color: #c2e8cf; }
