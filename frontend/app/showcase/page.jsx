@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import ThemeToggle from "../theme-toggle";
+import AppShell from "../app-shell";
 import "./showcase.css";
 
 const FIELDS = [
@@ -39,31 +39,17 @@ export default function NemotronShowcasePage() {
   }
 
   return (
-    <div className="showcase-shell">
-      <header className="showcase-topbar">
-        <a className="showcase-brand" href="/" aria-label="AXIOM research lab home">
-          <span className="showcase-brand-mark" aria-hidden="true">✳</span>
-          AXIOM<span className="showcase-brand-dot">.</span>
-        </a>
-        <div className="showcase-topbar-right">
-          <nav aria-label="Research navigation">
-            <a href="/#objective-workspace">Research lab</a>
-            <span aria-hidden="true">/</span>
-            <span aria-current="page">Live model showcase</span>
-          </nav>
-          <ThemeToggle />
-        </div>
-      </header>
-
-      <main className="showcase-main">
+    <AppShell section="assistant">
+      <div className="showcase-shell">
+        <main className="showcase-main">
         <section className="showcase-hero" aria-labelledby="showcase-heading">
           <div className="showcase-hero-copy">
-            <p className="showcase-eyebrow"><span className="showcase-status-dot" /> AXIOM / MODEL LAB 02</p>
+            <p className="showcase-eyebrow"><span className="showcase-status-dot" /> AXIOM / AI RESEARCH ASSISTANT</p>
             <h1 id="showcase-heading">Reasoning, <em>live.</em><br />Evidence, <em>honest.</em></h1>
             <p className="showcase-lede">
-              Ask NVIDIA Nemotron 3 Super to design a controlled ML experiment,
-              through Nebius Token Factory. Inspect its proposal without confusing
-              an AI-generated plan with an executed benchmark.
+              AXIOM’s AI Research Assistant uses NVIDIA Nemotron 3 Super via
+              Nebius Token Factory to generate a controlled experiment proposal.
+              This is a planning capability, not experiment execution or measured evidence.
             </p>
             <button className="showcase-action" type="button" onClick={runShowcase} disabled={busy} aria-busy={busy}>
               {busy ? "Requesting model proposal…" : result ? "Request model proposal again" : "Generate live experiment proposal"}
@@ -91,7 +77,7 @@ export default function NemotronShowcasePage() {
           <div className="showcase-section-heading">
             <div>
               <p className="showcase-section-kicker">02 / OUTPUT</p>
-              <h2 id="showcase-results-heading">Structured reasoning</h2>
+              <h2 id="showcase-results-heading">Experiment proposal</h2>
             </div>
             <span className="showcase-pill">{result ? (result.cached ? "Cached model output" : "Provider response received") : "Awaiting request"}</span>
           </div>
@@ -125,12 +111,13 @@ export default function NemotronShowcasePage() {
 
         <section className="showcase-boundary" aria-label="Evidence boundary">
           <span>IMPORTANT DISTINCTION</span>
-          <p>This showcase returns a <strong>live LLM-generated proposal</strong>, not executed code,
+          <p>The AI Research Assistant returns a <strong>live LLM-generated proposal</strong>, not executed code,
           real-model inference measurements, TensorRT optimization or GPU benchmark results.
-          The separate <a href="/#objective-workspace">research workspace</a> runs a labeled synthetic CPU demonstration.</p>
+          The <a href="/#objective-workspace">Research Workspace</a> separately runs a labeled synthetic CPU demonstration with its configured backend; the Nemotron proposal is not executed there.</p>
         </section>
-      </main>
-      <footer className="showcase-footer"><span>AXIOM / RESEARCH INTELLIGENCE</span><span>QUESTION → HYPOTHESIS → EVIDENCE</span></footer>
-    </div>
+        </main>
+        <footer className="showcase-footer"><span>AXIOM / RESEARCH INTELLIGENCE</span><span>PROPOSAL ≠ EXECUTION</span></footer>
+      </div>
+    </AppShell>
   );
 }
