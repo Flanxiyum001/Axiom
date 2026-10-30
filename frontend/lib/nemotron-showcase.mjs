@@ -144,7 +144,7 @@ export function buildNemotronRequest() {
     // Nemotron 3 Super reasons by default; use a final-answer budget for this
     // short JSON-only showcase rather than spending it on hidden reasoning.
     max_tokens: 1024,
-    reasoning_effort: "none",
+    chat_template_kwargs: { enable_thinking: false },
     stream: false,
     response_format: {
       type: "json_schema",
