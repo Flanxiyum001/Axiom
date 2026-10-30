@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { BASE_URL, buildNemotronRequest, parseNemotronContent, verifyNemotronModel, isCrossSiteShowcaseRequest, describeNemotronResponse } from "../../../../lib/nemotron-showcase.mjs";
+import { BASE_URL, buildNemotronRequest, validateNemotronCompletion, isCrossSiteShowcaseRequest, describeNemotronResponse } from "../../../../lib/nemotron-showcase.mjs";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -84,23 +84,16 @@ export async function POST(request) {
   let result;
   let verifiedModel;
   try {
-    verifiedModel = verifyNemotronModel(payload?.model);
-    const finishReason = payload?.choices?.[0]?.finish_reason;
-    // A truncated/refused/unfinished response must never be represented as
-    // a complete experiment proposal, even if its partial JSON parses.
-    if (finishReason !== "stop") {
-      emitProviderDiagnostic({
-        status: upstream.status, contentType: upstreamType, payload,
-        condition: finishReason === "length" ? "output_truncated" : "finish_reason_not_stop",
-      });
+    const completed = validateNemotronCompletion(payload);
+    verifiedModel = completed.model;
+    result = completed.result;
+  } catch (error) {
+    const condition = error?.condition ||
+      (error?.message?.includes("model identifier") ? "model_mismatch" : "validation_error");
+    emitProviderDiagnostic({ status: upstream.status, contentType: upstreamType, payload, condition });
+    if (condition === "output_truncated" || condition === "finish_reason_not_stop") {
       return responseError(502, "Nemotron did not finish generating a complete experiment proposal.");
     }
-    result = parseNemotronContent(payload?.choices?.[0]?.message?.content);
-  } catch (error) {
-    emitProviderDiagnostic({
-      status: upstream.status, contentType: upstreamType, payload,
-      condition: error?.condition || (error?.message?.includes("model identifier") ? "model_mismatch" : "validation_error"),
-    });
     return responseError(502, error instanceof Error ? error.message : "Nemotron response validation failed.");
   }
 
