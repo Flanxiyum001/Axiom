@@ -127,7 +127,6 @@ python -m experiments.real_inference_benchmark --repeats 10 --seed 42 --output a
 See [the benchmark protocol](docs/real-inference-benchmark.md) for the method and interpretation boundaries. Run it on the target machine and preserve its JSON report before quoting any measured result; a speedup is not guaranteed.
 
 See the [2:40 demo script and fallback](docs/demo-walkthrough.md), [release report](docs/release-audit.md), and [experiment-layer guide](docs/experiment-layer.md).
-See [the benchmark protocol](docs/real-inference-benchmark.md) for the method and interpretation boundaries. Run it on the target machine and preserve its JSON report before quoting any measured result; a speedup is not guaranteed.
 
 ## Run locally
 
