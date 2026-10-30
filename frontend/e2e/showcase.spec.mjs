@@ -50,3 +50,16 @@ test("showcase gives a useful error on provider cooldown without inventing a res
   await expect(page.getByText("No model proposal requested yet")).toBeVisible();
   await expect(page.getByRole("button", { name: "Generate live experiment proposal" })).toBeEnabled();
 });
+
+
+test("malformed Nemotron output fails closed without fabricating a proposal", async ({ page }) => {
+  await page.route("**/api/showcase/nemotron", (route) => route.fulfill({
+    status: 502, contentType: "application/json",
+    body: JSON.stringify({ error: "Nemotron response did not pass output validation." }),
+  }));
+  await page.goto("/showcase");
+  await page.getByRole("button", { name: "Generate live experiment proposal" }).click();
+  await expect(page.locator(".showcase-error[role=alert]")).toContainText("output validation");
+  await expect(page.getByText("No model proposal requested yet")).toBeVisible();
+  await expect(page.locator(".showcase-output")).toHaveCount(0);
+});
