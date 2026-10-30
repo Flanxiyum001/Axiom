@@ -108,7 +108,7 @@ export function describeNemotronResponse({ upstreamStatus = null, responseConten
   const rawModel = payload?.model;
   const rawFinish = payload?.choices?.[0]?.finish_reason;
   const rawMime = typeof responseContentType === "string" ? responseContentType.split(";")[0].trim().toLowerCase() : "";
-  const mime = /^[a-z0-9.+-]{1,35}\\/[a-z0-9.+-]{1,35}$/.test(rawMime) ? rawMime : "unknown";
+  const mime = /^[a-z0-9.+-]{1,35}\/[a-z0-9.+-]{1,35}$/.test(rawMime) ? rawMime : "unknown";
   const model = typeof rawModel === "string" && /^[a-zA-Z0-9/_.-]{1,128}$/.test(rawModel)
     ? rawModel : "unknown_or_invalid";
   const finishReason = typeof rawFinish === "string" && /^(stop|length|content_filter|tool_calls|function_call)$/.test(rawFinish)
