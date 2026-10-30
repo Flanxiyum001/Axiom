@@ -9,6 +9,7 @@ import {
   parseNemotronContent,
   inspectNemotronContent,
   describeNemotronResponse,
+  validateNemotronCompletion,
   NemotronContentError,
   verifyNemotronModel,
   isCrossSiteShowcaseRequest,
@@ -166,4 +167,18 @@ test("invalid model identities and untrusted JSON key names are safely redacted"
   assert.ok(diag.parsedJsonKeys.includes("<invalid-key>"));
   assert.equal(diag.failureCondition, "model_mismatch");
   assert.doesNotMatch(JSON.stringify(diag), /Bearer should not be logged/);
+});
+
+
+test("strict completion validation refuses the actual truncation and unfinished-output family", () => {
+  const okay = { model: MODEL, choices: [{ finish_reason: "stop", message: { content: JSON.stringify(valid) } }] };
+  assert.deepEqual(validateNemotronCompletion(okay), { model: MODEL, result: valid });
+  for (const finishReason of ["length", "content_filter", "tool_calls", null, undefined]) {
+    const response = { ...okay, choices: [{ ...okay.choices[0], finish_reason: finishReason }] };
+    assert.throws(() => validateNemotronCompletion(response), (error) =>
+      error instanceof NemotronContentError
+      && error.condition === (finishReason === "length" ? "output_truncated" : "finish_reason_not_stop"));
+  }
+  assert.throws(() => validateNemotronCompletion({ ...okay, model: "another-model" }),
+    /unexpected or missing model identifier/);
 });
