@@ -102,6 +102,34 @@ export function parseNemotronContent(content) {
   return Object.fromEntries(REQUIRED_FIELDS.map((field) => [field, parsed[field].trim()]));
 }
 
+// A small, allowlisted, redacted log record. No raw completion text, no
+// provider error body, no Authorization header or secret environment fields.
+export function describeNemotronResponse({ upstreamStatus = null, responseContentType = null, payload = null, condition = null } = {}) {
+  const rawModel = payload?.model;
+  const rawFinish = payload?.choices?.[0]?.finish_reason;
+  const rawMime = typeof responseContentType === "string" ? responseContentType.split(";")[0].trim().toLowerCase() : "";
+  const mime = /^[a-z0-9.+-]{1,35}\\/[a-z0-9.+-]{1,35}$/.test(rawMime) ? rawMime : "unknown";
+  const model = typeof rawModel === "string" && /^[a-zA-Z0-9/_.-]{1,128}$/.test(rawModel)
+    ? rawModel : "unknown_or_invalid";
+  const finishReason = typeof rawFinish === "string" && /^(stop|length|content_filter|tool_calls|function_call)$/.test(rawFinish)
+    ? rawFinish : "missing_or_unrecognized";
+  const content = inspectNemotronContent(payload?.choices?.[0]?.message?.content);
+  return {
+    event: "axiom.nemotron.response_diagnostic",
+    upstreamHttpStatus: Number.isInteger(upstreamStatus) && upstreamStatus >= 100 && upstreamStatus <= 599 ? upstreamStatus : null,
+    returnedModel: model,
+    modelMatchesExpected: rawModel === MODEL,
+    finishReason,
+    responseContentType: mime,
+    messageContentType: content.contentType,
+    parsedJsonKeys: content.parsedKeys,
+    parsedJsonKeyCount: content.keyCount,
+    requiredFields: content.fields,
+    failureCondition: condition || content.condition,
+    failedField: content.failedField,
+  };
+}
+
 export function buildNemotronRequest() {
   return {
     model: MODEL,
