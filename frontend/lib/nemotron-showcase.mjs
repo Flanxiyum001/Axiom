@@ -23,6 +23,7 @@ export const FIXED_PROMPT = [
   "Do not invent benchmark results. Explicitly distinguish a hypothesis from measured evidence.",
   "The safety_check must say generated code is not executed by this showcase.",
   "The limitation must state that this response is a plan, not a benchmark result.",
+  "Include exactly the five required JSON string fields. Keep each field concise, nonempty, and below 1200 characters.",
 ].join("\n");
 
 // Modern browsers send Fetch Metadata. Refuse cross-site browser-triggered
@@ -39,18 +40,65 @@ export function verifyNemotronModel(model) {
   return model;
 }
 
-export function parseNemotronContent(content) {
+// Diagnostics contain only JSON structure, types and lengths: never the
+// provider's generated text, reasoning trace, or credential-bearing headers.
+// The bounded key labels exclude arbitrary strings and control characters.
+export function inspectNemotronContent(content) {
+  const contentType = content === null ? "null" : Array.isArray(content) ? "array" : typeof content;
+  const base = { contentType, parsedKeys: [], keyCount: 0, fields: {}, condition: "valid", failedField: null };
+  if (typeof content !== "string") return { ...base, condition: "content_not_string" };
   let parsed;
   try {
     parsed = JSON.parse(content);
   } catch {
-    throw new Error("Nemotron response was not valid JSON.");
+    return { ...base, condition: "invalid_json" };
   }
+  if (parsed === null || typeof parsed !== "object" || Array.isArray(parsed)) {
+    return { ...base, condition: "invalid_json_root" };
+  }
+  const keys = Object.keys(parsed);
+  const safeKey = (key) => /^[a-z][a-z0-9_]{0,39}$/.test(key) ? key : "<invalid-key>";
+  base.parsedKeys = keys.slice(0, 20).map(safeKey);
+  base.keyCount = keys.length;
   for (const field of REQUIRED_FIELDS) {
-    if (typeof parsed?.[field] !== "string" || !parsed[field].trim() || parsed[field].length > 1200) {
-      throw new Error("Nemotron response did not pass output validation.");
+    const present = Object.hasOwn(parsed, field);
+    const value = present ? parsed[field] : undefined;
+    const type = !present ? "missing" : value === null ? "null" : Array.isArray(value) ? "array" : typeof value;
+    const characterCount = typeof value === "string" ? Array.from(value).length : null;
+    const utf16Length = typeof value === "string" ? value.length : null;
+    let condition = "valid";
+    if (!present) condition = "missing_field";
+    else if (type !== "string") condition = "non_string_field";
+    else if (!value.trim()) condition = "empty_field";
+    else if (utf16Length > 1200) condition = "oversized_field";
+    base.fields[field] = { type, characterCount, utf16Length, condition };
+    if (base.condition === "valid" && condition !== "valid") {
+      base.condition = condition;
+      base.failedField = field;
     }
   }
+  if (base.condition === "valid" && keys.some((key) => !REQUIRED_FIELDS.includes(key))) {
+    base.condition = "unexpected_keys";
+  }
+  return base;
+}
+
+export class NemotronContentError extends Error {
+  constructor(condition, field) {
+    super(condition === "invalid_json" ? "Nemotron response was not valid JSON." :
+      "Nemotron response did not pass output validation.");
+    this.name = "NemotronContentError";
+    this.condition = condition;
+    this.field = field ?? null;
+  }
+}
+
+export function parseNemotronContent(content) {
+  const diagnostics = inspectNemotronContent(content);
+  if (diagnostics.condition !== "valid") {
+    throw new NemotronContentError(diagnostics.condition, diagnostics.failedField);
+  }
+  const parsed = JSON.parse(content);
   return Object.fromEntries(REQUIRED_FIELDS.map((field) => [field, parsed[field].trim()]));
 }
 
@@ -65,7 +113,11 @@ export function buildNemotronRequest() {
       { role: "user", content: FIXED_PROMPT },
     ],
     temperature: 0.1,
-    max_tokens: 500,
+    // Nemotron 3 Super reasons by default; use a final-answer budget for this
+    // short JSON-only showcase rather than spending it on hidden reasoning.
+    max_tokens: 1024,
+    reasoning_effort: "none",
+    stream: false,
     response_format: {
       type: "json_schema",
       json_schema: { name: "axiom_showcase", strict: true, schema: RESPONSE_SCHEMA },
