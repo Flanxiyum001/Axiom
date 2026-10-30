@@ -6,11 +6,22 @@ required by AXIOM agents.
 """
 
 import json
-import time
 import logging
-from typing import TypeVar, Dict, Any, Optional
+import time
+from typing import TypeVar
 
-from openai import OpenAI
+from openai import (
+    APIConnectionError,
+    APIError,
+    APITimeoutError,
+    AuthenticationError,
+    BadRequestError,
+    NotFoundError,
+    OpenAI,
+    PermissionDeniedError,
+    RateLimitError,
+    UnprocessableEntityError,
+)
 from openai.types.chat import ChatCompletion
 from pydantic import BaseModel, ValidationError
 
@@ -29,12 +40,12 @@ class NebiusLLMProvider(LLMProvider):
     def __init__(
         self,
         *,
-        api_key: Optional[str] = None,
+        api_key: str | None = None,
         base_url: str = "https://api.tokenfactory.nebius.com/v1/",
         model: str = "meta-llama/Meta-Llama-3.1-70B-Instruct",
         request_timeout: float = 60.0,
         max_retries: int = 3,
-        seed: Optional[int] = None,
+        seed: int | None = None,
     ):
         """Initialize the Nebius provider."""
         from ..config import settings
@@ -50,6 +61,7 @@ class NebiusLLMProvider(LLMProvider):
         self.request_timeout = request_timeout
         self.max_retries = max_retries
         self.seed = seed
+        self.last_response_model: str | None = None
 
         self.client = OpenAI(
             base_url=self.base_url,
@@ -58,12 +70,11 @@ class NebiusLLMProvider(LLMProvider):
             max_retries=0,
         )
 
-        logger.info(
-            f"Initialized NebiusLLMProvider with model={self.model}, "
-            f"base_url={self.base_url}"
-        )
+        logger.info("Initialized NebiusLLMProvider with model=%s", self.model)
 
-    def _truncate_context(self, context: Dict[str, str], max_chars: int = 8000) -> Dict[str, str]:
+    def _truncate_context(
+        self, context: dict[str, str], max_chars: int = 8000
+    ) -> dict[str, str]:
         """Truncate context values to prevent excessive prompt sizes."""
         truncated = {}
         total_chars = 0
@@ -84,8 +95,8 @@ class NebiusLLMProvider(LLMProvider):
         return truncated
 
     def _build_messages(
-        self, system: str, prompt: str, context: Dict[str, str]
-    ) -> list[Dict[str, str]]:
+        self, system: str, prompt: str, context: dict[str, str]
+    ) -> list[dict[str, str]]:
         """Build the messages array for the chat completion API."""
         messages = []
 
@@ -105,11 +116,9 @@ class NebiusLLMProvider(LLMProvider):
 
         return messages
 
-    def _validate_and_parse_response(
-        self, content: str, output_type: type[T]
-    ) -> T:
+    def _validate_and_parse_response(self, content: str, output_type: type[T]) -> T:
         """Validate and parse the model response into the requested Pydantic model."""
-        if not content or not content.strip():
+        if not isinstance(content, str) or not content.strip():
             raise ProviderError("Empty response from model")
 
         try:
@@ -127,20 +136,12 @@ class NebiusLLMProvider(LLMProvider):
 
             data = json.loads(content.strip())
         except json.JSONDecodeError as e:
-            logger.error(f"Failed to parse JSON from model response: {content}")
-            raise ProviderError(
-                f"Model returned invalid JSON: {str(e)}. "
-                f"Response: {content[:200]}..."
-            ) from e
+            raise ProviderError("Model returned invalid JSON") from e
 
         try:
             return output_type.model_validate(data)
         except ValidationError as e:
-            logger.error(f"Pydantic validation failed for data: {data}")
-            raise ProviderError(
-                f"Model response failed validation: {str(e)}. "
-                f"Data: {json.dumps(data, indent=2)[:500]}..."
-            ) from e
+            raise ProviderError("Model response failed validation") from e
 
     def _build_response_format(self, output_type: type[T]) -> dict:
         """Build the response_format parameter for structured output using JSON Schema."""
@@ -160,7 +161,7 @@ class NebiusLLMProvider(LLMProvider):
         *,
         system: str,
         prompt: str,
-        context: Dict[str, str],
+        context: dict[str, str],
         output_type: type[T],
     ) -> T:
         """Generate a validated instance of output_type from the prompt."""
@@ -177,7 +178,7 @@ class NebiusLLMProvider(LLMProvider):
         if self.seed is not None:
             request_params["seed"] = self.seed
 
-        last_exception = None
+        self.last_response_model = None
         for attempt in range(self.max_retries + 1):
             try:
                 logger.debug(
@@ -188,6 +189,7 @@ class NebiusLLMProvider(LLMProvider):
                     **request_params
                 )
 
+                self.last_response_model = getattr(response, "model", None)
                 content = response.choices[0].message.content
                 if content is None:
                     raise ProviderError("Model returned empty content")
@@ -200,38 +202,38 @@ class NebiusLLMProvider(LLMProvider):
                 return result
 
             except Exception as e:
-                # Do not retry on validation or permanent client errors
-                from openai import BadRequestError, AuthenticationError, NotFoundError, UnprocessableEntityError, APIError, RateLimitError, APIConnectionError
-
                 # If it's our own ProviderError (validation, parsing), re‑raise immediately
                 if isinstance(e, ProviderError):
                     raise
 
-                # Permanent client errors (4xx except 429) should not be retried
-                permanent_errors = (BadRequestError, AuthenticationError, NotFoundError, UnprocessableEntityError)
-                if isinstance(e, permanent_errors):
-                    raise ProviderError(str(e)) from e
-
-                # OpenAI APIError may contain a status_code; retry on 5xx or 429
-                if isinstance(e, APIError):
+                if isinstance(e, (AuthenticationError, PermissionDeniedError)):
+                    raise ProviderError(
+                        f"Nebius authentication failed (HTTP {e.status_code}); check NEBIUS_API_KEY"
+                    ) from None
+                if isinstance(
+                    e, (BadRequestError, NotFoundError, UnprocessableEntityError)
+                ):
+                    raise ProviderError(
+                        f"Nebius rejected the request (HTTP {e.status_code}); check model and schema"
+                    ) from None
+                if isinstance(e, RateLimitError):
+                    error_message = "Nebius rate limit reached (HTTP 429)"
+                elif isinstance(e, (APITimeoutError, TimeoutError)):
+                    error_message = "Nebius request timed out"
+                elif isinstance(e, (APIConnectionError, OSError)):
+                    error_message = "Could not connect to Nebius Token Factory"
+                elif isinstance(e, APIError):
                     status = getattr(e, "status_code", None)
-                    if status and (500 <= status < 600 or status == 429):
-                        # transient – allow retry below
-                        pass
-                    else:
-                        raise ProviderError(str(e)) from e
-
-                # Rate limit or connection issues are transient
-                if isinstance(e, (RateLimitError, APIConnectionError, TimeoutError, OSError)):
-                    # transient – allow retry below
-                    pass
+                    if status is None or not (500 <= status < 600):
+                        raise ProviderError("Nebius request failed") from None
+                    error_message = f"Nebius server error (HTTP {status})"
                 else:
-                    # Any other unexpected exception – treat as transient for now
-                    pass
-
-                last_exception = e
+                    error_message = "Nebius returned a malformed or unexpected response"
                 logger.warning(
-                    f"Nebius API call failed (attempt {attempt + 1}): {str(e)}"
+                    "%s (attempt %s/%s)",
+                    error_message,
+                    attempt + 1,
+                    self.max_retries + 1,
                 )
 
                 if attempt < self.max_retries:
@@ -239,9 +241,6 @@ class NebiusLLMProvider(LLMProvider):
                     logger.info(f"Waiting {wait_time}s before retry...")
                     time.sleep(wait_time)
 
-        error_msg = (
-            f"Failed to generate valid output after {self.max_retries + 1} attempts. "
-            f"Last error: {str(last_exception)}"
-        )
+        error_msg = f"Failed to generate valid output after {self.max_retries + 1} attempts: {error_message}"
         logger.error(error_msg)
-        raise ProviderError(error_msg) from last_exception
+        raise ProviderError(error_msg) from None

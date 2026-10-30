@@ -1,11 +1,10 @@
 [project]
 name = "axiom"
 version = "0.1.0"
-description = "Autonomous AI research platform (mock‑first architecture)."
+description = "Research experiment planning, execution and evidence tracking prototype."
 readme = "README.md"
 requires-python = ">=3.11"
 license = "Apache-2.0"
-authors = [{name = "AXIOM Team", email = "team@example.com"}]
 
 # Runtime dependencies – the canonical backend implementation
 dependencies = [
@@ -18,7 +17,7 @@ dependencies = [
     "httpx>=0.27.0",
 ]
 
-# Development‑only dependencies (tests, linting, etc.)
+# Optional development and experiment dependencies
 [project.optional-dependencies]
 dev = [
     "pytest>=8.3.0",
@@ -26,7 +25,6 @@ dev = [
     "black>=24.8.0",
     "ruff>=0.6.0",
 ]
-
 ml-benchmark = [
     "scikit-learn>=1.5,<2.0",
 ]
@@ -34,8 +32,9 @@ ml-benchmark = [
 [build-system]
 requires = ["setuptools>=68.0", "wheel"]
 build-backend = "setuptools.build_meta"
+
 [tool.setuptools]
 packages = ["backend", "experiments", "tests"]
+
 [tool.setuptools.package-data]
 backend = ["axiom/benchmarks/datasets/*.json"]
-

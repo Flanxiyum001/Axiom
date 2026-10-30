@@ -100,3 +100,26 @@ test("derives provenance from the fresh loop-summary API shape", () => {
   assert.deepEqual(value.parameters, { sample_count: 3 });
 });
 
+test("fixed judge demo reports CPU work units without a model optimization claim", () => {
+  const value = deriveProvenance({
+    hypothesis: { statement: "Reducing fixed synthetic CPU work units should lower latency" },
+    plan: { variables: [{
+      name: "synthetic_cpu_work_units",
+      baseline_value: "1200000 arithmetic iterations",
+      candidate_value: "600000 arithmetic iterations",
+    }] },
+    spec: {
+      workload_type: "synthetic",
+      code: "# Fixed synthetic CPU demo; this spec is never executed.\npass\n",
+      intervention_status: "verified_synthetic",
+      intervention_detail: "Fixed in-process arithmetic workload; no model inference",
+    },
+  });
+  assert.equal(value.lever, "cpu_work_units");
+  assert.equal(value.leverConsistency, "consistent");
+  assert.equal(value.measurementMethod, "Synthetic workload; not real model inference");
+  assert.deepEqual(value.baselineSettings, {
+    synthetic_cpu_work_units: "1200000 arithmetic iterations",
+  });
+});
+
